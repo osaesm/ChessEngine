@@ -1,9 +1,9 @@
 .PHONY: all
-all: helloworld
+all: chess
 
-helloworld: helloworld.cpp
-	g++ -o out/helloworld helloworld.cpp
+chess: chess.cpp board.cpp
+	g++ -std=c++20 -o out/chess chess.cpp board.cpp
 
 .PHONY: clean
 clean:
-	rm -f helloworld
+	rm -rf out/*
