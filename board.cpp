@@ -120,6 +120,34 @@ std::vector<std::pair<short, short>> Board::LegalMoves() {
                 }
                 break;
             case BISHOP:
+                short leftCol = currCol-1;
+                short upRow = currRow+1;
+                while (leftCol > 0 && upRow <= 8 && (bitBoard & (1L << (8*(upRow-1) + leftCol-1))) != 0) {
+                    legalOptions.push_back(std::pair<short, short>(currPosition, 8*(upRow-1) + leftCol-1));
+                    leftCol--;
+                    upRow++;
+                }
+                short rightCol = currCol+1;
+                upRow = currRow+1;
+                while (rightCol <= 8 && upRow <= 8 && (bitBoard & (1L << (8*(upRow-1) + rightCol-1))) != 0) {
+                    legalOptions.push_back(std::pair<short, short>(currPosition, 8*(upRow-1) + rightCol-1));
+                    rightCol++;
+                    upRow++;
+                }
+                rightCol = currCol+1;
+                short downRow = currRow-1;
+                while (rightCol <= 8 && downRow > 0 && (bitBoard & (1L << (8*(downRow-1) + rightCol-1))) != 0) {
+                    legalOptions.push_back(std::pair<short, short>(currPosition, 8*(downRow-1) + rightCol-1));
+                    rightCol++;
+                    downRow--;
+                }
+                leftCol = currCol-1;
+                downRow = currRow-1;
+                while (leftCol > 0 && downRow > 0 && (bitBoard & (1L << (8*(downRow-1) + leftCol-1))) != 0) {
+                    legalOptions.push_back(std::pair<short, short>(currPosition, 8*(downRow-1) + leftCol-1));
+                    leftCol--;
+                    downRow--;
+                }
                 break;
             case ROOK:
                 break;
