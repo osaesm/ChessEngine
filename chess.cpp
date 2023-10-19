@@ -3,7 +3,6 @@
 /**
  * TODO:
  * - Rooks
- * - Knights
  * - Bishops
  * - Queens
  * - Kings

@@ -8,11 +8,9 @@ struct Piece
 {
     TURN_COLORS color;
     PIECES pieceType;
-    // short position;
-    Piece(TURN_COLORS c, PIECES p, short x) {
+    Piece(TURN_COLORS c, PIECES p) {
         color = c;
         pieceType = p;
-        // position = x;
     }
 };
 
