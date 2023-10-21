@@ -4,6 +4,7 @@
 enum TURN_COLORS{WHITE, BLACK};
 enum PIECES{PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING};
 
+#define isEmpty(x) ((bitBoard & (1L << x)) == 0L)
 struct Piece
 {
     TURN_COLORS color;

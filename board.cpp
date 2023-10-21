@@ -3,10 +3,73 @@
 #include <unordered_map>
 
 #include "board.h"
+#define BISHOP_MOVEMENT \
+                short leftCol = currCol - 1;\
+                short upRow = currRow + 1;\
+                short upLeftIdx = 8 * (upRow - 1) + leftCol - 1;\
+                while (leftCol > 0 && upRow <= 8 && ((isEmpty(upLeftIdx - 1) || activePieces[upLeftIdx]->color != turn)))\
+                {\
+                    legalOptions.push_back(std::pair<short, short>(currPosition, upLeftIdx));\
+                    leftCol--;\
+                    upRow++;\
+                }\
+                short rightCol = currCol + 1;\
+                upRow = currRow + 1;\
+                short upRightIdx = 8 * (upRow - 1) + rightCol - 1;\
+                while (rightCol <= 8 && upRow <= 8 && (isEmpty(upRightIdx - 1) || activePieces[upRightIdx]->color != turn))\
+                {\
+                    legalOptions.push_back(std::pair<short, short>(currPosition, upRightIdx));\
+                    rightCol++;\
+                    upRow++;\
+                }\
+                rightCol = currCol + 1;\
+                short downRow = currRow - 1;\
+                short downRightIdx = 8 * (downRow - 1) + rightCol - 1;\
+                while (rightCol <= 8 && downRow > 0 && (isEmpty(downRightIdx - 1) || activePieces[downRightIdx]->color != turn))\
+                {\
+                    legalOptions.push_back(std::pair<short, short>(currPosition, downRightIdx));\
+                    rightCol++;\
+                    downRow--;\
+                }\
+                leftCol = currCol - 1;\
+                downRow = currRow - 1;\
+                short leftDownIdx = 8 * (downRow - 1) + leftCol - 1;\
+                while (leftCol > 0 && downRow > 0 && (isEmpty(leftDownIdx - 1) || activePieces[leftDownIdx]->color != turn))\
+                {\
+                    legalOptions.push_back(std::pair<short, short>(currPosition, leftDownIdx));\
+                    leftCol--;\
+                    downRow--;\
+                }
+
+#define ROOK_MOVEMENT \
+                if (currRow < 8) {\
+                    for (short up = currPosition + 8; up < 64 && (isEmpty(up) || activePieces[up]->color != turn); up += 8)\
+                    {\
+                        legalOptions.push_back(std::pair<short, short>(currPosition, up));\
+                    }\
+                }\
+                if (currRow > 1) {\
+                    for (short down = currPosition - 8; down >= 0 && (isEmpty(down) || activePieces[down]->color != turn); down -= 8)\
+                    {\
+                        legalOptions.push_back(std::pair<short, short>(currPosition, down));\
+                    }\
+                }\
+                if (currCol < 8) {\
+                    for (short right = currPosition + 1; (right % 8) != 0 && (isEmpty(right) || activePieces[right]->color != turn); right++)\
+                    {\
+                        legalOptions.push_back(std::pair<short, short>(currPosition, right));\
+                    }\
+                }\
+                if (currCol > 1) {\
+                    for (short left = currPosition - 1; (left % 8) != 7 && (isEmpty(left) || activePieces[left]->color != turn); left--)\
+                    {\
+                        legalOptions.push_back(std::pair<short, short>(currPosition, left));\
+                    }\
+                }
 
 Board::Board()
 {
-    turn = WHITE;
+    turn = BLACK;
     whiteCastle = true;
     whiteLongCastle = true;
     blackCastle = true;
@@ -58,9 +121,7 @@ TURN_COLORS Board::Start()
 {
     for (auto p : LegalMoves())
     {
-        if (p.first < 8) {
-            std::cout << p.first << " to " << p.second << std::endl;
-        }
+        std::cout << p.first << " to " << p.second << std::endl;
     }
     return WHITE;
 }
@@ -82,11 +143,12 @@ std::vector<std::pair<short, short>> Board::LegalMoves()
             {
             case PAWN:
             {
+                // std::cout << "starting pawn" << std::endl;
                 if (turn == WHITE)
                 {
-                    bool blocked = (bitBoard & (1L << (currPosition + 8))) != 0;
+                    bool blocked = !isEmpty(currPosition + 8);
                     // Check if pawn can move 2 up
-                    if (currRow == 2 && !blocked && (bitBoard & (1L << (currPosition + 16)) != 0L))
+                    if (currRow == 2 && !blocked && isEmpty(currPosition + 16))
                     {
                         legalOptions.push_back(std::pair<short, short>{currPosition, currPosition + 8});
                         legalOptions.push_back(std::pair<short, short>{currPosition, currPosition + 16});
@@ -97,248 +159,135 @@ std::vector<std::pair<short, short>> Board::LegalMoves()
                         legalOptions.push_back(std::pair<short, short>{currPosition, currPosition + 8});
                     }
                     // Check left diagonal take
-                    if (currCol > 1 && (bitBoard & (1L << (currPosition + 7))) != 0L)
+                    if (currRow < 8 && currCol > 1 && !isEmpty(currPosition + 7) && activePieces[currPosition + 7]->color != turn)
                     {
                         legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 7));
                     }
                     // Check right diagonal take
-                    if (currCol < 8 && (bitBoard & (1L << (currPosition + 9))) != 0L)
+                    if (currRow < 8 && currCol < 8 && !isEmpty(currPosition + 9) && activePieces[currPosition + 9]->color != turn)
                     {
                         legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 9));
                     }
                 }
+                // std::cout << "finshing pawn" << std::endl;
                 break;
             }
             case KNIGHT:
             {
-                if (currRow > 2 && currCol > 1 && currPosition >= 17 && ((bitBoard & (1L << (currPosition - 17))) == 0 || activePieces[currPosition - 17]->color != currColor))
+                // std::cout << "starting knight" << std::endl;
+                if (currRow > 2 && currCol > 1 && (isEmpty(currPosition - 17) || activePieces[currPosition - 17]->color != currColor))
                 {
                     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 17));
                 }
-                if (currRow > 1 && currCol > 2 && currPosition >= 10 && ((bitBoard & (1L << (currPosition - 10))) == 0 || activePieces[currPosition - 10]->color != currColor))
+                if (currRow > 1 && currCol > 2 && (isEmpty(currPosition - 10) || activePieces[currPosition - 10]->color != currColor))
                 {
                     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 10));
                 }
-                if (currRow < 8 && currCol > 2 && currPosition <= 57 && ((bitBoard & (1L << (currPosition + 6))) == 0 || activePieces[currPosition + 6]->color != currColor))
+                if (currRow < 8 && currCol > 2 && (isEmpty(currPosition + 6) || activePieces[currPosition + 6]->color != currColor))
                 {
                     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 6));
                 }
-                if (currRow < 7 && currCol > 1 && currPosition <= 48 && ((bitBoard & (1L << (currPosition + 15))) == 0 || activePieces[currPosition + 15]->color != currColor))
+                if (currRow < 7 && currCol > 1 && (isEmpty(currPosition + 15) || activePieces[currPosition + 15]->color != currColor))
                 {
                     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 15));
                 }
-                if (currRow < 7 && currCol < 8 && currPosition <= 46 && ((bitBoard & (1L << (currPosition + 17))) == 0 || activePieces[currPosition + 17]->color != currColor))
+                if (currRow < 7 && currCol < 8 && (isEmpty(currPosition + 17) || activePieces[currPosition + 17]->color != currColor))
                 {
                     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 17));
                 }
-                if (currRow < 8 && currCol < 7 && currPosition <= 53 && ((bitBoard & (1L << (currPosition + 10))) == 0 || activePieces[currPosition + 10]->color != currColor))
+                if (currRow < 8 && currCol < 7 && (isEmpty(currPosition + 10) || activePieces[currPosition + 10]->color != currColor))
                 {
                     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 10));
                 }
-                if (currRow > 1 && currCol < 7 && currPosition >= 6 && ((bitBoard & (1L << (currPosition - 6))) == 0 || activePieces[currPosition - 6]->color != currColor))
+                if (currRow > 1 && currCol < 7 && (isEmpty(currPosition - 6) || activePieces[currPosition - 6]->color != currColor))
                 {
                     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 6));
                 }
-                if (currRow > 2 && currCol < 8 && currPosition >= 15 && ((bitBoard & (1L << (currPosition - 15))) == 0 || activePieces[currPosition - 15]->color != currColor))
+                if (currRow > 2 && currCol < 8 && (isEmpty(currPosition - 15) || activePieces[currPosition - 15]->color != currColor))
                 {
                     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 15));
                 }
+                // std::cout << "finishing knight" << std::endl;
                 break;
             }
             case BISHOP:
             {
-                short leftCol = currCol - 1;
-                short upRow = currRow + 1;
-                short upLeftIdx = 8 * (upRow - 1) + leftCol - 1;
-                while (leftCol > 0 && upRow <= 8 && (((bitBoard & (1L << (upLeftIdx - 1))) == 0L) || activePieces[upLeftIdx]->color != turn))
-                {
-                    legalOptions.push_back(std::pair<short, short>(currPosition, upLeftIdx));
-                    leftCol--;
-                    upRow++;
-                }
-                short rightCol = currCol + 1;
-                upRow = currRow + 1;
-                short upRightIdx = 8 * (upRow - 1) + rightCol - 1;
-                while (rightCol <= 8 && upRow <= 8 && (((bitBoard & (1L << (upRightIdx - 1))) == 0L) || activePieces[upRightIdx]->color != turn))
-                {
-                    legalOptions.push_back(std::pair<short, short>(currPosition, upRightIdx));
-                    rightCol++;
-                    upRow++;
-                }
-                rightCol = currCol + 1;
-                short downRow = currRow - 1;
-                short downRightIdx = 8 * (downRow - 1) + rightCol - 1;
-                while (rightCol <= 8 && downRow > 0 && (((bitBoard & (1L << (downRightIdx - 1))) == 0L) || activePieces[downRightIdx]->color != turn))
-                {
-                    legalOptions.push_back(std::pair<short, short>(currPosition, downRightIdx));
-                    rightCol++;
-                    downRow--;
-                }
-                leftCol = currCol - 1;
-                downRow = currRow - 1;
-                short leftDownIdx = 8 * (downRow - 1) + leftCol - 1;
-                while (leftCol > 0 && downRow > 0 && (((bitBoard & (1L << (leftDownIdx - 1))) == 0L) || activePieces[leftDownIdx]->color != turn))
-                {
-                    legalOptions.push_back(std::pair<short, short>(currPosition, leftDownIdx));
-                    leftCol--;
-                    downRow--;
-                }
+                // std::cout << "starting bishop" << std::endl;
+                BISHOP_MOVEMENT
+                // std::cout << "finishing bishop" << std::endl;
                 break;
             }
             case ROOK:
             {
-                if (currRow < 8) {
-                    for (short up = currPosition + 8; up < 64 && (((bitBoard & (1L << up - 1)) == 0L) || activePieces[up]->color != turn); up += 8)
-                    {
-                        legalOptions.push_back(std::pair<short, short>(currPosition, up));
-                        if ((bitBoard & (1L << up)) != 0) {
-                            break;
-                        }
-                    }
-                }
-                if (currRow > 1) {
-                    for (short down = currPosition - 8; down >= 0 && (((bitBoard & (1L << down - 1)) == 0L) || activePieces[down]->color != turn); down -= 8)
-                    {
-                        legalOptions.push_back(std::pair<short, short>(currPosition, down));
-                        if ((bitBoard & (1L << down)) != 0) {
-                            break;
-                        }
-                    }
-                }
-                if (currCol < 8) {
-                    for (short right = currPosition + 1; (right % 8) != 0 && (((bitBoard & (1L << right - 1)) == 0L) || activePieces[right]->color != turn); right++)
-                    {
-                        legalOptions.push_back(std::pair<short, short>(currPosition, right));
-                        if ((bitBoard & (1L << right)) != 0) {
-                            break;
-                        }
-                    }
-                }
-                if (currCol > 1) {
-                    for (short left = currPosition - 1; (left % 8 != 7) && (((bitBoard & (1L << left - 1)) == 0L) || activePieces[left]->color != turn); left--)
-                    {
-                        legalOptions.push_back(std::pair<short, short>(currPosition, left));
-                        if ((bitBoard & (1L << left)) != 0) {
-                            break;
-                        }
-                    }
-                }
+                // std::cout << "starting rook" << std::endl;
+                ROOK_MOVEMENT
+                // std::cout << "finishing rook" << std::endl;
                 break;
             }
             case QUEEN:
             {
-                short leftCol = currCol - 1;
-                short upRow = currRow + 1;
-                short upLeftIdx = 8 * (upRow - 1) + leftCol - 1;
-                while (leftCol > 0 && upRow <= 8 && (((bitBoard & (1L << (upLeftIdx - 1))) == 0L) || activePieces[upLeftIdx]->color != turn))
-                {
-                    legalOptions.push_back(std::pair<short, short>(currPosition, upLeftIdx));
-                    leftCol--;
-                    upRow++;
-                }
-                short rightCol = currCol + 1;
-                upRow = currRow + 1;
-                short upRightIdx = 8 * (upRow - 1) + rightCol - 1;
-                while (rightCol <= 8 && upRow <= 8 && (((bitBoard & (1L << (upRightIdx - 1))) == 0L) || activePieces[upRightIdx]->color != turn))
-                {
-                    legalOptions.push_back(std::pair<short, short>(currPosition, upRightIdx));
-                    rightCol++;
-                    upRow++;
-                }
-                rightCol = currCol + 1;
-                short downRow = currRow - 1;
-                short downRightIdx = 8 * (downRow - 1) + rightCol - 1;
-                while (rightCol <= 8 && downRow > 0 && (((bitBoard & (1L << (downRightIdx - 1))) == 0L) || activePieces[downRightIdx]->color != turn))
-                {
-                    legalOptions.push_back(std::pair<short, short>(currPosition, downRightIdx));
-                    rightCol++;
-                    downRow--;
-                }
-                leftCol = currCol - 1;
-                downRow = currRow - 1;
-                short leftDownIdx = 8 * (downRow - 1) + leftCol - 1;
-                while (leftCol > 0 && downRow > 0 && (((bitBoard & (1L << (leftDownIdx - 1))) == 0L) || activePieces[leftDownIdx]->color != turn))
-                {
-                    legalOptions.push_back(std::pair<short, short>(currPosition, leftDownIdx));
-                    leftCol--;
-                    downRow--;
-                }
-                if (currRow < 8) {
-                    for (short up = currPosition + 8; up < 64 && (((bitBoard & (1L << up - 1)) == 0L) || activePieces[up]->color != turn); up += 8)
-                    {
-                        legalOptions.push_back(std::pair<short, short>(currPosition, up));
-                        if ((bitBoard & (1L << up)) != 0) {
-                            break;
-                        }
-                    }
-                }
-                if (currRow > 1) {
-                    for (short down = currPosition - 8; down >= 0 && (((bitBoard & (1L << down - 1)) == 0L) || activePieces[down]->color != turn); down -= 8)
-                    {
-                        legalOptions.push_back(std::pair<short, short>(currPosition, down));
-                        if ((bitBoard & (1L << down)) != 0) {
-                            break;
-                        }
-                    }
-                }
-                if (currCol < 8) {
-                    for (short right = currPosition + 1; (right % 8) != 0 && (((bitBoard & (1L << right - 1)) == 0L) || activePieces[right]->color != turn); right++)
-                    {
-                        legalOptions.push_back(std::pair<short, short>(currPosition, right));
-                        if ((bitBoard & (1L << right)) != 0) {
-                            break;
-                        }
-                    }
-                }
-                if (currCol > 1) {
-                    for (short left = currPosition - 1; (left % 8 != 7) && (((bitBoard & (1L << left - 1)) == 0L) || activePieces[left]->color != turn); left--)
-                    {
-                        legalOptions.push_back(std::pair<short, short>(currPosition, left));
-                        if ((bitBoard & (1L << left)) != 0) {
-                            break;
-                        }
-                    }
-                }
+                // std::cout << "starting queen" << std::endl;
+                BISHOP_MOVEMENT
+                ROOK_MOVEMENT
+                // std::cout << "finishing queen" << std::endl;
                 break;
             }
             case KING:
             {
-                // if (currRow < 8 && currCol < 8)
-                // {
-                //     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 9));
-                //     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 8));
-                //     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 1));
-                // }
-                // else if (currCol < 8)
-                // {
-                //     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 1));
-                // }
-                // else if (currRow < 8)
-                // {
-                //     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 8));
-                // }
-                // if (currRow > 0 && currCol > 0)
-                // {
-                //     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 9));
-                //     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 8));
-                //     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 1));
-                // }
-                // else if (currRow > 0)
-                // {
-                //     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 8));
-                // }
-                // else if (currCol > 0)
-                // {
-                //     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 1));
-                // }
-                // if (currRow > 0 && currCol < 8)
-                // {
-                //     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 7));
-                // }
-                // if (currRow < 8 && currCol > 0)
-                // {
-                //     legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 7));
-                // }
+                // std::cout << "starting king" << std::endl;
+                if (currRow < 8 && currCol < 8)
+                {
+                    for (auto k : {1, 8, 9}) {
+                        if (isEmpty(currPosition + k) || activePieces[currPosition + k]->color != turn) {
+                            legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + k));
+                        }
+                    }
+                }
+                else if (currCol < 8)
+                {
+                    if (isEmpty(currPosition + 1) || activePieces[currPosition + 1]->color != turn) {
+                        legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 1));
+                    }
+                }
+                else if (currRow < 8)
+                {
+                    if (isEmpty(currPosition + 8) || activePieces[currPosition + 8]->color != turn) {
+                        legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 8));
+                    }
+                }
+                if (currRow > 1 && currCol > 1)
+                {
+                    for (auto k : {1, 8, 9}) {
+                        if (isEmpty(currPosition - k) || activePieces[currPosition - k]->color != turn) {
+                            legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - k));
+                        }
+                    }
+                }
+                else if (currRow > 1)
+                {
+                    if (isEmpty(currPosition - 8) || activePieces[currPosition - 8]->color != turn) {
+                        legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 8));
+                    }
+                }
+                else if (currCol > 1)
+                {
+                    if (isEmpty(currPosition - 1) || activePieces[currPosition - 1]->color != turn) {
+                        legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 1));
+                    }
+                }
+                if (currRow > 1 && currCol < 8)
+                {
+                    if (isEmpty(currPosition - 7) || activePieces[currPosition - 7]->color != turn) {
+                        legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 7));
+                    }
+                }
+                if (currRow < 8 && currCol > 1)
+                {
+                    if (isEmpty(currPosition + 7) || activePieces[currPosition + 7]->color != turn) {
+                        legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 7));
+                    }
+                }
+                // std::cout << "finishing king" << std::endl;
                 break;
             }
             };
