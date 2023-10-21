@@ -153,7 +153,7 @@ std::vector<std::pair<short, short>> Board::LegalMoves()
                         legalOptions.push_back(std::pair<short, short>{currPosition, currPosition + 8});
                         legalOptions.push_back(std::pair<short, short>{currPosition, currPosition + 16});
                     }
-                    else if (currRow < 7 && !blocked)
+                    else if (currRow < 8 && !blocked)
                     {
                         // If not 2 spaces, check for 1
                         legalOptions.push_back(std::pair<short, short>{currPosition, currPosition + 8});
@@ -167,6 +167,29 @@ std::vector<std::pair<short, short>> Board::LegalMoves()
                     if (currRow < 8 && currCol < 8 && !isEmpty(currPosition + 9) && activePieces[currPosition + 9]->color != turn)
                     {
                         legalOptions.push_back(std::pair<short, short>(currPosition, currPosition + 9));
+                    }
+                } else {
+                    bool blocked = !isEmpty(currPosition - 8);
+                    // Check if pawn can move 2 down
+                    if (currRow == 7 && !blocked && isEmpty(currPosition - 16))
+                    {
+                        legalOptions.push_back(std::pair<short, short>{currPosition, currPosition - 8});
+                        legalOptions.push_back(std::pair<short, short>{currPosition, currPosition - 16});
+                    }
+                    else if (currRow > 1 && !blocked)
+                    {
+                        // If not 2 spaces, check for 1
+                        legalOptions.push_back(std::pair<short, short>{currPosition, currPosition - 8});
+                    }
+                    // Check left diagonal take
+                    if (currRow > 1 && currCol > 1 && !isEmpty(currPosition - 9) && activePieces[currPosition - 9]->color != turn)
+                    {
+                        legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 9));
+                    }
+                    // Check right diagonal take
+                    if (currRow > 1 && currCol > 1 && !isEmpty(currPosition - 7) && activePieces[currPosition - 7]->color != turn)
+                    {
+                        legalOptions.push_back(std::pair<short, short>(currPosition, currPosition - 7));
                     }
                 }
                 // std::cout << "finshing pawn" << std::endl;
