@@ -1,6 +1,8 @@
 #ifndef BOARD_H
+#include <optional>
 #include <unordered_map>
 #include <vector>
+
 enum TURN_COLORS{WHITE, BLACK};
 enum PIECES{PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING};
 

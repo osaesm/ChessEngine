@@ -40,7 +40,7 @@ public:
 
 bool firstTest() {
     TestBoard* testBoard = new TestBoard();
-
+    return true;
 }
 
 
