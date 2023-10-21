@@ -4,7 +4,7 @@
 enum TURN_COLORS{WHITE, BLACK};
 enum PIECES{PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING};
 
-#define isEmpty(x) ((bitBoard & (1L << x)) == 0L)
+#define isEmpty(x) ((bitBoard & (1L << (x))) == 0L)
 struct Piece
 {
     TURN_COLORS color;
@@ -17,7 +17,7 @@ struct Piece
 
 class Board
 {
-private:
+protected:
     TURN_COLORS turn;
     bool whiteCastle;
     bool whiteLongCastle;
@@ -31,6 +31,13 @@ public:
     Board();
     ~Board();
     TURN_COLORS Start();
+    void EditBoard(const std::optional<TURN_COLORS>& newTurn,
+                          const std::optional<bool>& canWhiteCastle,
+                          const std::optional<bool>& canWhiteLongCastle,
+                          const std::optional<bool>& canBlackCastle,
+                          const std::optional<bool>& canBlackLongCastle,
+                          const std::optional<unsigned long>& newBitBoard,
+                          const std::optional<std::unordered_map<short, Piece *>>& newActivePieces);
 };
 #define BOARD_H
 #endif

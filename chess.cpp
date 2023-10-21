@@ -2,11 +2,6 @@
 
 /**
  * TODO:
- * - Rooks
- * - Bishops
- * - Queens
- * - Kings
- * - Black everything
  * - Work on figuring out if piece is pinned to king or not
  * - 
  * - Figure out robust testing?
