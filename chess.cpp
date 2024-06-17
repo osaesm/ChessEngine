@@ -182,22 +182,28 @@ std::vector<Chess *> Chess::LegalMoves()
     // PseudoLegalMoves
     // See if move is actually legal
     std::vector<Chess *> pseudoLegalMoves;
-    for (Piece *currPiece : this->pieces)
+    Piece::Type promotions[4] = {Piece::Type::QUEEN, Piece::Type::ROOK, Piece::Type::BISHOP, Piece::Type::KNIGHT};
+    for (auto idx = 0; idx < 64; ++idx)
     {
+        Piece *currPiece = this->pieces[idx];
         if (currPiece->color == this->turn)
         {
-            Chess* nextMoveGame = new Chess(*this);
+            Chess *nextMoveGame = new Chess(*this);
             nextMoveGame->turn = (this->turn == Piece::Color::WHITE) ? Piece::Color::BLACK : Piece::Color::WHITE;
             ++nextMoveGame->lastPawnOrTake;
-            if (!nextMoveGame->turn) {
+            if (!nextMoveGame->turn)
+            {
                 ++this->fullTurns;
             }
-            if (nextMoveGame->enPassantIdx != -1) {
+            if (nextMoveGame->enPassantIdx != -1)
+            {
                 nextMoveGame->enPassantIdx = -1;
             }
+            nextMoveGame->pieces[idx] = nullptr;
             switch (currPiece->type)
             {
             case Piece::Type::PAWN:
+                nextMoveGame->lastPawnOrTake = 0;
                 // White Pawns
                 // - White Forward
                 //   - If pawn promotes, try all
@@ -208,6 +214,40 @@ std::vector<Chess *> Chess::LegalMoves()
                 // - White Takes Right
                 //   - If pawn promotes, try all
                 //   - Else just move pawn
+                if (currPiece->color == Piece::Color::WHITE)
+                {
+                    if (!this->pieces[idx + 8])
+                    {
+                        if (idx + 8 >= 56)
+                        {
+                        }
+                        else
+                        {
+                            nextMoveGame->pieces[idx + 8] = currPiece;
+                            std::string boardFEN = nextMoveGame->ConvertToFEN();
+                            nextMoveGame->occurrences[boardFEN] = 1;
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[idx + 8] = nullptr;
+                            nextMoveGame->occurrences.erase(boardFEN);
+                            if (idx < 16 && !this->pieces[idx + 16])
+                            {
+                                nextMoveGame->pieces[idx + 16] = currPiece;
+                                nextMoveGame->enPassantIdx = idx + 8;
+                                boardFEN = nextMoveGame->BoardIdx();
+                                nextMoveGame->occurrences[boardFEN] = 1;
+                                pseudoLegalMoves.push_back(nextMoveGame);
+                                nextMoveGame = new Chess(*nextMoveGame);
+                                nextMoveGame->pieces[idx + 16] = nullptr;
+                                nextMoveGame->enPassantIdx = -1;
+                                nextMoveGame->occurrences.erase(boardFEN);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                }
 
                 // Black Pawns
                 // - Black Forward
