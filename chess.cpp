@@ -402,73 +402,54 @@ std::vector<Chess *> Chess::LegalMoves()
                 case Piece::Type::KNIGHT:
                     if (row > 1) {
                         if (col > 0 && (!this->pieces[idx - 17] || (this->pieces[idx - 17]->color != this->turn))) {
-                            nextMoveGame->pieces[idx - 17] = currPiece;
-                            fenString = nextMoveGame->BoardIdx();
-                            if (this->pieces[idx - 17]) {
-                                nextMoveGame->lastPawnOrTake = 0;
-                            }
-                            nextMoveGame->occurrences[fenString]++;
-                            pseudoLegalMoves.push_back(nextMoveGame);
-                            nextMoveGame = new Chess(*nextMoveGame);
-                            nextMoveGame->pieces[idx - 17] = this->pieces[idx - 17];
-                            if (this->pieces[idx - 17]) {
-                                nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
-                            }
-                            if (nextMoveGame->occurrences[fenString] == 1) {
-                                nextMoveGame->occurrences.erase(fenString);
-                            } else {
-                                nextMoveGame->occurrences[fenString]--;
-                            }
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, idx - 17, true));
                         }
                         if (col < 7 && (!this->pieces[idx - 15] || (this->pieces[idx - 15]->color != this->turn))) {
-                            nextMoveGame->pieces[idx - 15] = currPiece;
-                            fenString = nextMoveGame->BoardIdx();
-                            if (this->pieces[idx - 15]) {
-                                nextMoveGame->lastPawnOrTake = 0;
-                            }
-                            nextMoveGame->occurrences[fenString]++;
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, idx - 15, true));
+                        }
+                    }
+                    if (row > 0) {
+                        if (col > 1 && (!this->pieces[idx - 10] || (this->pieces[idx - 10]->color != this->turn))) {
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, idx - 10, true));
+                        }
+                        if (col < 6 && (!this->pieces[idx - 6] || (this->pieces[idx - 6]->color != this->turn))) {
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, idx - 6, true));
+                        }
+                    }
+                    if (row < 7) {
+                        if (col > 1 && (!this->pieces[idx + 6] || (this->pieces[idx + 6]->color != this->turn))) {
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, idx + 6, true));
+                        }
+                        if (col < 6 && (!this->pieces[idx + 10] || (this->pieces[idx + 10]->color != this->turn))) {
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, idx + 10, true));
+                        }
+                    }
+                    if (row < 6) {
+                        if (col > 0 && (!this->pieces[idx + 15] || (this->pieces[idx + 15]->color != this->turn))) {
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, idx + 15, true));
+                        }
+                        if (col < 7 && (!this->pieces[idx + 17] || (this->pieces[idx + 17]->color != this->turn))) {
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, idx + 17, true));
                         }
                     }
                     break;
                 case Piece::Type::BISHOP:
-                    fenString = "";
                     // Sliding with increments of -9, -7, 7, 9
                     for (auto direction : diagonals)
                     {
                         auto rowIteration = (direction > 0) ? 1 : -1;
                         auto colIteration = (direction % 8 == 1) ? 1 : -1;
-                        for (auto newRow = row + rowIteration; newRow >= 0 && newRow < 8; ++newRow)
+                        for (auto newRow = row + rowIteration; newRow >= 0 && newRow < 8; newRow += rowIteration)
                         {
-                            for (auto newCol = col + colIteration; newCol >= 0 && newCol < 8; ++newCol)
+                            for (auto newCol = col + colIteration; newCol >= 0 && newCol < 8; newCol += colIteration)
                             {
                                 auto nextIdx = (newRow * 8) + newCol;
                                 if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
                                 {
-                                    nextMoveGame->pieces[nextIdx] = currPiece;
-                                    fenString = nextMoveGame->BoardIdx();
-                                    if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
-                                    {
-                                        nextMoveGame->occurrences[fenString] = 1;
-                                    }
-                                    else
-                                    {
-                                        nextMoveGame->occurrences[fenString]++;
-                                    }
-                                    if (this->pieces[nextIdx])
-                                    {
-                                        nextMoveGame->lastPawnOrTake = 0;
-                                    }
-                                    pseudoLegalMoves.push_back(nextMoveGame);
-                                    nextMoveGame = new Chess(*nextMoveGame);
-                                    nextMoveGame->pieces[nextIdx] = nullptr;
-                                    if (nextMoveGame->occurrences[fenString] == 1)
-                                    {
-                                        nextMoveGame->occurrences.erase(fenString);
-                                    }
-                                    else
-                                    {
-                                        nextMoveGame->occurrences[fenString]--;
-                                    }
+                                    pseudoLegalMoves.push_back(this->MovePiece(idx, nextIdx, true));
+                                }
+                                if (this->pieces[nextIdx]) {
+                                    break;
                                 }
                             }
                         }
