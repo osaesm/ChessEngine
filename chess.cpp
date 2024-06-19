@@ -157,24 +157,50 @@ Chess::Chess(const Chess &originalGame)
     this->fullTurns = originalGame.fullTurns;
 }
 
-Chess::Chess(Piece *newBoard[64], Piece::Color currTurn, bool wCastle, bool wQueenCastle, bool bCastle, bool bQueenCastle, short enPassantIdx, short lastPawnOrTake, int fullTurns, std::unordered_map<std::string, short> newOccurrences)
-{
-    for (auto i = 0; i < 64; ++i)
-    {
-        this->pieces[i] = newBoard[i];
+// This function does the following:
+// * Creates a copy of the game
+// * Moves the piece from "start" to "end" in the copy
+// * Increments the lastPawnOrTake & fullTurns
+// * Sets en passant idx to -1 (if needed, set later)
+// * Can't deal with occurrences bc of castling & en passant
+Chess* Chess::MovePiece(const short start, const short end, const bool updateOccurrences) {
+    Chess* nextMoveGame = new Chess(*this);
+    nextMoveGame->pieces[start] = nullptr;
+    nextMoveGame->pieces[end] = this->pieces[start];
+    if (this->pieces[start]->type == Piece::Type::PAWN || this->pieces[end]) {
+        nextMoveGame->lastPawnOrTake = 0;
+    } else {
+        ++nextMoveGame->lastPawnOrTake;
     }
-    this->turn = currTurn;
-    this->wCastle = wCastle;
-    this->wQueenCastle = wQueenCastle;
-    this->bCastle = bCastle;
-    this->bQueenCastle = bQueenCastle;
-    this->enPassantIdx = enPassantIdx;
-    this->lastPawnOrTake = lastPawnOrTake;
-    this->fullTurns = fullTurns;
-    for (auto const &elem : newOccurrences)
-    {
-        this->occurrences[elem.first] = elem.second;
+    nextMoveGame->turn = (this->turn == Piece::Color::WHITE) ? Piece::Color::BLACK ? Piece::Color::WHITE;
+    if (this->turn == Piece::Color::BLACK) {
+        ++this->fullTurns;
     }
+    if (nextMoveGame->enPassantIdx != -1) {
+        nextMoveGame->enPassantIdx = -1;
+    }
+    if (updateOccurrences) {
+        nextMoveGame->occurrences[nextMoveGame->BoardIdx()]++;
+    }
+    return nextMoveGame;
+}
+
+Chess* Chess::UpgradePawn(const short start, const short end, const Piece::Type option) {
+    Chess* nextMoveGame = new Chess(*this);
+    nextMoveGame->pieces[start] = nullptr;
+    nextMoveGame->pieces[end] = new Piece();
+    nextMoveGame->pieces[end]->color = this->pieces[start]->color;
+    nextMoveGame->pieces[end]->type = option;
+    nextMoveGame->lastPawnOrTake = 0;
+    if (nextMoveGame->enPassantIdx != -1) {
+        nextMoveGame->enPassantIdx = -1;
+    }
+    nextMoveGame->turn = (this->turn == Piece::Color::WHITE) ? Piece::Color::BLACK ? Piece::Color::WHITE;
+    if (this->turn == Piece::Color::BLACK) {
+        ++this->fullTurns;
+    }
+    nextMoveGame->occurrences[nextMoveGame->BoardIdx()]++;
+    return nextMoveGame;
 }
 
 std::vector<Chess *> Chess::LegalMoves()
@@ -183,98 +209,1045 @@ std::vector<Chess *> Chess::LegalMoves()
     // See if move is actually legal
     std::vector<Chess *> pseudoLegalMoves;
     Piece::Type promotions[4] = {Piece::Type::QUEEN, Piece::Type::ROOK, Piece::Type::BISHOP, Piece::Type::KNIGHT};
-    for (auto idx = 0; idx < 64; ++idx)
+    // iterating over rows and columns is a lot easier than 0-63 directly (avoids modular math)
+    short diagonals[4] = {-9, -7, 7, 9};
+    short straights[4] = {-8, -1, 1, 8};
+    std::string fenString = "";
+    for (auto row = 0; row < 8; ++row)
     {
-        Piece *currPiece = this->pieces[idx];
-        if (currPiece->color == this->turn)
+        for (auto col = 0; col < 8; ++col)
         {
-            Chess *nextMoveGame = new Chess(*this);
-            nextMoveGame->turn = (this->turn == Piece::Color::WHITE) ? Piece::Color::BLACK : Piece::Color::WHITE;
-            ++nextMoveGame->lastPawnOrTake;
-            if (!nextMoveGame->turn)
+            auto idx = (8 * row) + col;
+            Piece *currPiece = this->pieces[idx];
+            if (currPiece->color == this->turn)
             {
-                ++this->fullTurns;
-            }
-            if (nextMoveGame->enPassantIdx != -1)
-            {
-                nextMoveGame->enPassantIdx = -1;
-            }
-            nextMoveGame->pieces[idx] = nullptr;
-            switch (currPiece->type)
-            {
-            case Piece::Type::PAWN:
-                nextMoveGame->lastPawnOrTake = 0;
-                // White Pawns
-                // - White Forward
-                //   - If pawn promotes, try all
-                //   - Else 2 forward
-                // - White Takes Left
-                //   - If pawn promotes, try all
-                //   - Else just move pawn
-                // - White Takes Right
-                //   - If pawn promotes, try all
-                //   - Else just move pawn
-                if (currPiece->color == Piece::Color::WHITE)
+                switch (currPiece->type)
                 {
-                    if (!this->pieces[idx + 8])
+                case Piece::Type::PAWN:
+                    // White Pawn
+                    if (currPiece->color == Piece::Color::WHITE)
                     {
-                        if (idx + 8 >= 56)
+                        // Check if we can go one space forward)
+                        if (!this->pieces[idx + 8])
                         {
-                        }
-                        else
-                        {
-                            nextMoveGame->pieces[idx + 8] = currPiece;
-                            std::string boardFEN = nextMoveGame->ConvertToFEN();
-                            nextMoveGame->occurrences[boardFEN] = 1;
-                            pseudoLegalMoves.push_back(nextMoveGame);
-                            nextMoveGame = new Chess(*nextMoveGame);
-                            nextMoveGame->pieces[idx + 8] = nullptr;
-                            nextMoveGame->occurrences.erase(boardFEN);
-                            if (idx < 16 && !this->pieces[idx + 16])
+                            // Check if this move leads to promotion
+                            if (row + 1 == 7)
                             {
-                                nextMoveGame->pieces[idx + 16] = currPiece;
-                                nextMoveGame->enPassantIdx = idx + 8;
-                                boardFEN = nextMoveGame->BoardIdx();
-                                nextMoveGame->occurrences[boardFEN] = 1;
+                                for (auto option : promotions)
+                                {
+                                    pseudoLegalMoves.push_back(this->UpgradePawn(idx, idx + 8, option));
+                                }
+                            }
+                            else
+                            {
+                                pseudoLegalMoves.push_back(this->MovePiece(idx, idx + 8, true));
+                                // Check if we can move 2 squares
+                                if (idx < 16 && !this->pieces[idx + 16])
+                                {
+                                    Chess *nextMoveGame = this->MovePiece(idx, idx + 16, false);
+                                    nextMoveGame->enPassantIdx = idx + 8;
+                                    fenString = nextMoveGame->BoardIdx();
+                                    nextMoveGame->occurrences[fenString] = 1;
+                                    pseudoLegalMoves.push_back(nextMoveGame);
+                                }
+                            }
+                        }
+                        // Check if we can take left
+                        if (col != 0)
+                        {
+                            // Normal take
+                            if ((this->pieces[idx + 7] != nullptr) && (this->pieces[idx + 7]->color == Piece::Color::BLACK))
+                            {
+                                // Does taking lead to promotion
+                                if (row + 1 == 7)
+                                {
+                                    for (auto option : promotions)
+                                    {
+                                        pseudoLegalMoves.push_back(this->UpgradePawn(idx, idx + 7, option));
+                                    }
+                                }
+                                else
+                                {
+                                    pseudoLegalMoves.push_back(this->MovePiece(idx, idx + 7, true));
+                                }
+                            }
+                            // En Passant Take
+                            else if (this->enPassantIdx == (idx + 7))
+                            {
+                                Chess* nextMoveGame = this->MovePiece(idx, idx + 7, false);
+                                nextMoveGame->pieces[idx - 1] = nullptr;
+                                fenString = nextMoveGame->BoardIdx();
+                                nextMoveGame->occurrences[fenString] = 1;
                                 pseudoLegalMoves.push_back(nextMoveGame);
-                                nextMoveGame = new Chess(*nextMoveGame);
-                                nextMoveGame->pieces[idx + 16] = nullptr;
-                                nextMoveGame->enPassantIdx = -1;
-                                nextMoveGame->occurrences.erase(boardFEN);
+                            }
+                        }
+                        // Check if we can take right
+                        if (col != 7)
+                        {
+                            // Normal take
+                            if ((this->pieces[idx + 9] != nullptr) && (this->pieces[idx + 9]->color == Piece::Color::BLACK))
+                            {
+                                // Does taking lead to promotion
+                                if (row + 1 == 7)
+                                {
+                                    for (auto option : promotions)
+                                    {
+                                        pseudoLegalMoves.push_back(this->UpgradePawn(idx, idx + 9, option));
+                                    }
+                                }
+                                else
+                                {
+                                    pseudoLegalMoves.push_back(this->MovePiece(idx, idx + 9, true));
+                                }
+                            }
+                            // En Passant Take
+                            else if (this->enPassantIdx == (idx + 9))
+                            {
+                                Chess *nextMoveGame = this->MovePiece(idx, idx + 9);
+                                nextMoveGame->pieces[idx + 1] = nullptr;
+                                fenString = nextMoveGame->BoardIdx();
+                                nextMoveGame->occurrences[fenString] = 1;
+                                pseudoLegalMoves.push_back(nextMoveGame);
                             }
                         }
                     }
-                }
-                else
-                {
-                }
+                    // Black Pawn
+                    else
+                    {
+                        // Can we go forward
+                        if (!this->pieces[idx - 8])
+                        {
+                            // Check if the move leads to promotion
+                            if (row - 1 == 0)
+                            {
+                                for (auto option : promotions)
+                                {
+                                    pseudoLegalMoves.push_back(this->UpgradePawn(idx, idx - 8, option));
+                                }
+                            }
+                            else
+                            {
+                                pseudoLegalMoves.push_back(this->MovePiece(idx, idx - 8, true));
+                                // Check if we can move two squares
+                                if (idx >= 48 && !this->pieces[idx - 16])
+                                {
+                                    Chess *nextMoveGame = this->MovePiece(idx, idx - 16, false);
+                                    nextMoveGame->enPassantIdx = idx - 8;
+                                    fenString = nextMoveGame->BoardIdx();
+                                    nextMoveGame->occurrences[fenString] = 1;
+                                    pseudoLegalMoves.push_back(nextMoveGame);
+                                }
+                            }
+                        }
+                        // Check if we can take left
+                        if (col != 7)
+                        {
+                            // Normal Take
+                            if ((this->pieces[idx - 7] != nullptr) && (this->pieces[idx - 7]->color == Piece::Color::WHITE))
+                            {
+                                if (row - 1 == 0)
+                                {
+                                    // Check if taking leads to promotion
+                                    for (auto option : promotions)
+                                    {
+                                        pseudoLegalMoves.push_back(this->UpgradePawn(idx, idx - 7, option))
+                                    }
+                                }
+                                else
+                                {
+                                    pseudoLegalMoves.push_back(this->MovePiece(idx, idx - 7, true));
+                                }
+                            }
+                            // En Passant Take
+                            else if (this->enPassantIdx == (idx - 7))
+                            {
+                                Chess *nextMoveGame = this->MovePiece(idx, idx - 7, false);
+                                nextMoveGame->pieces[idx + 1] = nullptr;
+                                fenString = nextMoveGame->BoardIdx();
+                                nextMoveGame->occurrences[fenString] = 1;
+                                pseudoLegalMoves.push_back(nextMoveGame);
+                            }
+                        }
+                        // Check if we can take right
+                        if (col != 0)
+                        {
+                            // Normal take
+                            if ((this->pieces[idx - 9] != nullptr) && (this->pieces[idx - 9]->color == Piece::Color::WHITE))
+                            {
+                                // Check if taking leads to promotion
+                                if (row - 1 == 0)
+                                {
+                                    for (auto option : promotions)
+                                    {
+                                        pseudoLegalMoves.push_back(this->UpgradePawn(idx, idx - 9, option));
+                                    }
+                                }
+                                else
+                                {
+                                    pseudoLegalMoves.push_back(this->MovePiece(idx, idx - 9, true));
+                                }
+                            }
+                            // En Passant Take
+                            else if (this->enPassantIdx == (idx - 9))
+                            {
+                                Chess *nextMoveGame = this->MovePiece(idx, idx - 9, false);
+                                nextMoveGame->pieces[idx - 1] = nullptr;
+                                fenString = nextMoveGame->BoardIdx();
+                                nextMoveGame->occurrences[fenString] = 1;
+                                pseudoLegalMoves.push_back(nextMoveGame);
+                            }
+                        }
+                    }
+                    break;
+                case Piece::Type::KNIGHT:
+                    if (row > 1) {
+                        if (col > 0 && (!this->pieces[idx - 17] || (this->pieces[idx - 17]->color != this->turn))) {
+                            nextMoveGame->pieces[idx - 17] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (this->pieces[idx - 17]) {
+                                nextMoveGame->lastPawnOrTake = 0;
+                            }
+                            nextMoveGame->occurrences[fenString]++;
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[idx - 17] = this->pieces[idx - 17];
+                            if (this->pieces[idx - 17]) {
+                                nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            }
+                            if (nextMoveGame->occurrences[fenString] == 1) {
+                                nextMoveGame->occurrences.erase(fenString);
+                            } else {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                        if (col < 7 && (!this->pieces[idx - 15] || (this->pieces[idx - 15]->color != this->turn))) {
+                            nextMoveGame->pieces[idx - 15] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (this->pieces[idx - 15]) {
+                                nextMoveGame->lastPawnOrTake = 0;
+                            }
+                            nextMoveGame->occurrences[fenString]++;
+                        }
+                    }
+                    break;
+                case Piece::Type::BISHOP:
+                    fenString = "";
+                    // Sliding with increments of -9, -7, 7, 9
+                    for (auto direction : diagonals)
+                    {
+                        auto rowIteration = (direction > 0) ? 1 : -1;
+                        auto colIteration = (direction % 8 == 1) ? 1 : -1;
+                        for (auto newRow = row + rowIteration; newRow >= 0 && newRow < 8; ++newRow)
+                        {
+                            for (auto newCol = col + colIteration; newCol >= 0 && newCol < 8; ++newCol)
+                            {
+                                auto nextIdx = (newRow * 8) + newCol;
+                                if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                                {
+                                    nextMoveGame->pieces[nextIdx] = currPiece;
+                                    fenString = nextMoveGame->BoardIdx();
+                                    if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                                    {
+                                        nextMoveGame->occurrences[fenString] = 1;
+                                    }
+                                    else
+                                    {
+                                        nextMoveGame->occurrences[fenString]++;
+                                    }
+                                    if (this->pieces[nextIdx])
+                                    {
+                                        nextMoveGame->lastPawnOrTake = 0;
+                                    }
+                                    pseudoLegalMoves.push_back(nextMoveGame);
+                                    nextMoveGame = new Chess(*nextMoveGame);
+                                    nextMoveGame->pieces[nextIdx] = nullptr;
+                                    if (nextMoveGame->occurrences[fenString] == 1)
+                                    {
+                                        nextMoveGame->occurrences.erase(fenString);
+                                    }
+                                    else
+                                    {
+                                        nextMoveGame->occurrences[fenString]--;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break;
+                case Piece::Type::ROOK:
+                    // Sliding with increments of -8, -1, 1, 8
+                    // need to mark castle variables
+                    for (auto downRow = row - 1; downRow >= 0; --downRow)
+                    {
+                        auto nextIdx = (downRow * 8) + col;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            if (this->pieces[nextIdx])
+                            {
+                                nextMoveGame->lastPawnOrTake = 0;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    for (auto upRow = row + 1; upRow < 8; ++upRow)
+                    {
+                        auto nextIdx = (upRow * 8) + col;
+                        if (!this->pieces[nextIdx])
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                        else if (this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            nextMoveGame->lastPawnOrTake = 0;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = this->pieces[nextIdx];
+                            nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    for (auto leftCol = col - 1; leftCol >= 0; --leftCol)
+                    {
+                        auto nextIdx = (row * 8) + leftCol;
+                        if (!this->pieces[nextIdx])
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                        else if (this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            nextMoveGame->lastPawnOrTake = 0;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = this->pieces[nextIdx];
+                            nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    for (auto rightCol = col + 1; rightCol < 8; ++rightCol)
+                    {
+                        auto nextIdx = (row * 8) + rightCol;
+                        if (!this->pieces[nextIdx])
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                        else if (this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            nextMoveGame->lastPawnOrTake = 0;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = this->pieces[nextIdx];
+                            nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    break;
+                case Piece::Type::QUEEN:
+                    for (auto direction : diagonals)
+                    {
+                        auto rowIteration = (direction > 0) ? 1 : -1;
+                        auto colIteration = (direction % 8 == 1) ? 1 : -1;
+                        for (auto newRow = row + rowIteration; newRow >= 0 && newRow < 8; ++newRow)
+                        {
+                            for (auto newCol = col + colIteration; newCol >= 0 && newCol < 8; ++newCol)
+                            {
+                                auto nextIdx = (newRow * 8) + newCol;
+                                if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                                {
+                                    nextMoveGame->pieces[nextIdx] = currPiece;
+                                    fenString = nextMoveGame->BoardIdx();
+                                    if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                                    {
+                                        nextMoveGame->occurrences[fenString] = 1;
+                                    }
+                                    else
+                                    {
+                                        nextMoveGame->occurrences[fenString]++;
+                                    }
+                                    if (this->pieces[nextIdx])
+                                    {
+                                        nextMoveGame->lastPawnOrTake = 0;
+                                    }
+                                    pseudoLegalMoves.push_back(nextMoveGame);
+                                    nextMoveGame = new Chess(*nextMoveGame);
+                                    nextMoveGame->pieces[nextIdx] = nullptr;
+                                    if (nextMoveGame->occurrences[fenString] == 1)
+                                    {
+                                        nextMoveGame->occurrences.erase(fenString);
+                                    }
+                                    else
+                                    {
+                                        nextMoveGame->occurrences[fenString]--;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    for (auto downRow = row - 1; downRow >= 0; --downRow)
+                    {
+                        auto nextIdx = (downRow * 8) + col;
+                        if (!this->pieces[nextIdx])
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                        else if (this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            nextMoveGame->lastPawnOrTake = 0;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = this->pieces[nextIdx];
+                            nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    for (auto upRow = row + 1; upRow < 8; ++upRow)
+                    {
+                        auto nextIdx = (upRow * 8) + col;
+                        if (!this->pieces[nextIdx])
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                        else if (this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            nextMoveGame->lastPawnOrTake = 0;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = this->pieces[nextIdx];
+                            nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    for (auto leftCol = col - 1; leftCol >= 0; --leftCol)
+                    {
+                        auto nextIdx = (row * 8) + leftCol;
+                        if (!this->pieces[nextIdx])
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                        else if (this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            nextMoveGame->lastPawnOrTake = 0;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = this->pieces[nextIdx];
+                            nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    for (auto rightCol = col + 1; rightCol < 8; ++rightCol)
+                    {
+                        auto nextIdx = (row * 8) + rightCol;
+                        if (!this->pieces[nextIdx])
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                        else if (this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            nextMoveGame->lastPawnOrTake = 0;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = this->pieces[nextIdx];
+                            nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    // Sliding with bishop + rook
+                    break;
+                default:
+                    // King goes one any direction
+                    if (currPiece->color == Piece::Color::WHITE)
+                    {
+                        if (nextMoveGame->wCastle)
+                        {
+                            nextMoveGame->wCastle = false;
+                        }
+                        if (nextMoveGame->wQueenCastle)
+                        {
+                            nextMoveGame->wQueenCastle = false;
+                        }
+                    }
+                    else
+                    {
+                        if (nextMoveGame->bCastle)
+                        {
+                            nextMoveGame->bCastle = false;
+                        }
+                        if (nextMoveGame->bQueenCastle)
+                        {
+                            nextMoveGame->bQueenCastle = false;
+                        }
+                    }
+                    auto nextIdx = -1;
+                    if (row != 0 && col != 0)
+                    {
+                        nextIdx = ((row - 1) * 8) + (col - 1);
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            if (this->pieces[nextIdx])
+                            {
+                                nextMoveGame->lastPawnOrTake = 0;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->lastPawnOrTake != (this->lastPawnOrTake + 1))
+                            {
+                                nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            }
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    else if (row != 0 && col != 7)
+                    {
+                        nextIdx = ((row - 1) * 8) + (col + 1);
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            if (this->pieces[nextIdx])
+                            {
+                                nextMoveGame->lastPawnOrTake = 0;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->lastPawnOrTake != (this->lastPawnOrTake + 1))
+                            {
+                                nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            }
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    else if (row != 0)
+                    {
+                        nextIdx = ((row - 1) * 8) + col;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            if (this->pieces[nextIdx])
+                            {
+                                nextMoveGame->lastPawnOrTake = 0;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->lastPawnOrTake != (this->lastPawnOrTake + 1))
+                            {
+                                nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            }
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
 
-                // Black Pawns
-                // - Black Forward
-                //   - If pawn promotes, try all
-                //   - Else 2 forward
-                // - Black Takes Left
-                //   - If pawn promotes, try all
-                //   - Else just move pawn
-                // - Black Takes Right
-                //   - If pawn promotes, try all
-                //   - Else just move pawn
-                break;
-            case Piece::Type::KNIGHT:
-                // So much modular math rip
-                break;
-            case Piece::Type::BISHOP:
-                // Sliding with increments of -9, -7, 7, 9
-                break;
-            case Piece::Type::ROOK:
-                // Sliding with increments of -8, -1, 1, 8
-                break;
-            case Piece::Type::QUEEN:
-                // Sliding with bishop + rook
-                break;
-            default:
-                // King goes one any direction
-                break;
+                    if (row != 7 && col != 0)
+                    {
+                        nextIdx = ((row + 1) * 8) + (col - 1);
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            if (this->pieces[nextIdx])
+                            {
+                                nextMoveGame->lastPawnOrTake = 0;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->lastPawnOrTake != (this->lastPawnOrTake + 1))
+                            {
+                                nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            }
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    else if (row != 7 && col != 7)
+                    {
+                        nextIdx = ((row + 1) * 8) + (col + 1);
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            if (this->pieces[nextIdx])
+                            {
+                                nextMoveGame->lastPawnOrTake = 0;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->lastPawnOrTake != (this->lastPawnOrTake + 1))
+                            {
+                                nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            }
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    else if (row != 7)
+                    {
+                        nextIdx = ((row + 1) * 8) + col;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            if (this->pieces[nextIdx])
+                            {
+                                nextMoveGame->lastPawnOrTake = 0;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->lastPawnOrTake != (this->lastPawnOrTake + 1))
+                            {
+                                nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            }
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+
+                    if (col != 0)
+                    {
+                        nextIdx = idx - 1;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            if (this->pieces[nextIdx])
+                            {
+                                nextMoveGame->lastPawnOrTake = 0;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->lastPawnOrTake != (this->lastPawnOrTake + 1))
+                            {
+                                nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            }
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    if (col != 7)
+                    {
+                        nextIdx = idx + 1;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            nextMoveGame->pieces[nextIdx] = currPiece;
+                            fenString = nextMoveGame->BoardIdx();
+                            if (nextMoveGame->occurrences.find(fenString) == nextMoveGame->occurrences.end())
+                            {
+                                nextMoveGame->occurrences[fenString] = 1;
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]++;
+                            }
+                            if (this->pieces[nextIdx])
+                            {
+                                nextMoveGame->lastPawnOrTake = 0;
+                            }
+                            pseudoLegalMoves.push_back(nextMoveGame);
+                            nextMoveGame = new Chess(*nextMoveGame);
+                            nextMoveGame->pieces[nextIdx] = nullptr;
+                            if (nextMoveGame->lastPawnOrTake != (this->lastPawnOrTake + 1))
+                            {
+                                nextMoveGame->lastPawnOrTake = this->lastPawnOrTake + 1;
+                            }
+                            if (nextMoveGame->occurrences[fenString] == 1)
+                            {
+                                nextMoveGame->occurrences.erase(fenString);
+                            }
+                            else
+                            {
+                                nextMoveGame->occurrences[fenString]--;
+                            }
+                        }
+                    }
+                    break;
+                }
             }
         }
     }

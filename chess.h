@@ -37,7 +37,8 @@ private:
 public:
     Chess(const std::string & fenString);
     Chess(const Chess & originalGame);
-    Chess(Piece* newBoard[64], Piece::Color currTurn, bool wCastle, bool wQueenCastle, bool bCastle, bool bQueenCastle, short enPassantIdx, short lastPawnOrTake, int fullMoves, std::unordered_map<std::string, short> newOccurrences);
+    Chess* MovePiece(const short start, const short end, const bool updateOccurrences);
+    Chess* UpgradePawn(const short start, const short end, const Piece::Type option);
     std::vector<Chess*> LegalMoves();
     std::string BoardIdx();
     std::string ConvertToFEN();
