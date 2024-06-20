@@ -157,22 +157,27 @@ Chess::Chess(const Chess &originalGame)
     this->fullTurns = originalGame.fullTurns;
 }
 
-// Need to figure out knights
-bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor) {
+// Sees if other color has king in check from kingIdx
+bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
+{
     short startRow = kingIdx / 8;
     short startCol = kingIdx % 8;
     bool searchDown = true;
     // -9
     for (short x = 1, newIdx = kingIdx - 9; (x <= startRow) && (x <= startCol); ++x, newIdx -= 9)
     {
-        if (this->pieces[newIdx]) {
-            if (this->pieces[newIdx]->color == kingColor) {
-                if (this->pieces[newIdx]->type == Piece::Type::KING) {
+        if (this->pieces[newIdx])
+        {
+            if (this->pieces[newIdx]->color == kingColor)
+            {
+                if (this->pieces[newIdx]->type == Piece::Type::KING)
+                {
                     continue;
                 }
                 break;
             }
-            if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::BLACK && (this->pieces[newIdx]->type == Piece::Type::PAWN))) {
+            if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::BLACK && (this->pieces[newIdx]->type == Piece::Type::PAWN)))
+            {
                 return true;
             }
             break;
@@ -181,14 +186,18 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor) {
     // -8
     for (short x = 1, newIdx = kingIdx - 8; x <= startRow; ++x, newIdx -= 8)
     {
-        if (this->pieces[newIdx]) {
-            if (this->pieces[newIdx]->color == kingColor) {
-                if (this->pieces[newIdx]->type == Piece::Type::KING) {
+        if (this->pieces[newIdx])
+        {
+            if (this->pieces[newIdx]->color == kingColor)
+            {
+                if (this->pieces[newIdx]->type == Piece::Type::KING)
+                {
                     continue;
                 }
                 break;
             }
-            if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN)) {
+            if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN))
+            {
                 return true;
             }
             break;
@@ -197,14 +206,18 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor) {
     // -7
     for (short x = 1, newIdx = kingIdx - 7; (x <= startRow) && ((x + startCol) < 8); ++x, newIdx -= 7)
     {
-        if (this->pieces[newIdx]) {
-            if (this->pieces[newIdx]->color == kingColor) {
-                if (this->pieces[newIdx]->type == Piece::Type::KING) {
+        if (this->pieces[newIdx])
+        {
+            if (this->pieces[newIdx]->color == kingColor)
+            {
+                if (this->pieces[newIdx]->type == Piece::Type::KING)
+                {
                     continue;
                 }
                 break;
             }
-            if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::BLACK && (this->pieces[newIdx]->type == Piece::Type::PAWN))) {
+            if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::BLACK && (this->pieces[newIdx]->type == Piece::Type::PAWN)))
+            {
                 return true;
             }
             break;
@@ -213,14 +226,18 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor) {
     // -1
     for (short x = 1, newIdx = kingIdx - 1; x <= startCol; ++x, --newIdx)
     {
-        if (this->pieces[newIdx]) {
-            if (this->pieces[newIdx]->color == kingColor) {
-                if (this->pieces[newIdx]->type == Piece::Type::KING) {
+        if (this->pieces[newIdx])
+        {
+            if (this->pieces[newIdx]->color == kingColor)
+            {
+                if (this->pieces[newIdx]->type == Piece::Type::KING)
+                {
                     continue;
                 }
                 break;
             }
-            if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN)) {
+            if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN))
+            {
                 return true;
             }
             break;
@@ -229,14 +246,18 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor) {
     // +1
     for (short x = 1, newIdx = kingIdx + 1; (x + startCol) < 8; ++x, ++newIdx)
     {
-        if (this->pieces[newIdx]) {
-            if (this->pieces[newIdx]->color == kingColor) {
-                if (this->pieces[newIdx]->type == Piece::Type::KING) {
+        if (this->pieces[newIdx])
+        {
+            if (this->pieces[newIdx]->color == kingColor)
+            {
+                if (this->pieces[newIdx]->type == Piece::Type::KING)
+                {
                     continue;
                 }
                 break;
             }
-            if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN)) {
+            if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN))
+            {
                 return true;
             }
             break;
@@ -245,14 +266,18 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor) {
     // +7
     for (short x = 1, newIdx = kingIdx + 7; ((x + startRow) < 8) && (x <= startCol); ++x, newIdx += 7)
     {
-        if (this->pieces[newIdx]) {
-            if (this->pieces[newIdx]->color == kingColor) {
-                if (this->pieces[newIdx]->type == Piece::Type::KING) {
+        if (this->pieces[newIdx])
+        {
+            if (this->pieces[newIdx]->color == kingColor)
+            {
+                if (this->pieces[newIdx]->type == Piece::Type::KING)
+                {
                     continue;
                 }
                 break;
             }
-            if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::WHITE && (this->pieces[newIdx]->type == Piece::Type::PAWN))) {
+            if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::WHITE && (this->pieces[newIdx]->type == Piece::Type::PAWN)))
+            {
                 return true;
             }
             break;
@@ -261,14 +286,18 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor) {
     // +8
     for (short x = 1, newIdx = kingIdx + 8; x + startRow < 8; ++x, newIdx += 8)
     {
-        if (this->pieces[newIdx]) {
-            if (this->pieces[newIdx]->color == kingColor) {
-                if (this->pieces[newIdx]->type == Piece::Type::KING) {
+        if (this->pieces[newIdx])
+        {
+            if (this->pieces[newIdx]->color == kingColor)
+            {
+                if (this->pieces[newIdx]->type == Piece::Type::KING)
+                {
                     continue;
                 }
                 break;
             }
-            if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN)) {
+            if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN))
+            {
                 return true;
             }
             break;
@@ -277,14 +306,18 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor) {
     // +9
     for (short x = 1, newIdx = kingIdx + 9; ((x + startRow) < 8) && ((x + startCol) < 8); ++x, newIdx += 9)
     {
-        if (this->pieces[newIdx]) {
-            if (this->pieces[newIdx]->color == kingColor) {
-                if (this->pieces[newIdx]->type == Piece::Type::KING) {
+        if (this->pieces[newIdx])
+        {
+            if (this->pieces[newIdx]->color == kingColor)
+            {
+                if (this->pieces[newIdx]->type == Piece::Type::KING)
+                {
                     continue;
                 }
                 break;
             }
-            if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::WHITE && (this->pieces[newIdx]->type == Piece::Type::PAWN))) {
+            if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::WHITE && (this->pieces[newIdx]->type == Piece::Type::PAWN)))
+            {
                 return true;
             }
             break;
@@ -292,6 +325,52 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor) {
     }
 
     // Knight checks
+    if (startRow > 1)
+    {
+        if (startCol > 0 && (this->pieces[kingIdx - 17] && (this->pieces[kingIdx - 17]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx - 17]->color != kingColor)))
+        {
+            return true;
+        }
+        if (startCol < 7 && (this->pieces[kingIdx - 15] && (this->pieces[kingIdx - 15]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx - 15]->color != kingColor)))
+        {
+            return true;
+        }
+    }
+    if (startRow > 0)
+    {
+        if (startCol > 1 && (this->pieces[kingIdx - 10] && (this->pieces[kingIdx - 10]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx - 10]->color != kingColor)))
+        {
+            return true;
+        }
+        if (startCol < 6 && (this->pieces[kingIdx - 6] && (this->pieces[kingIdx - 6]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx - 6]->color != kingColor)))
+        {
+            return true;
+        }
+    }
+    if (startRow < 7)
+    {
+        if (startCol > 1 && (this->pieces[kingIdx + 6] && (this->pieces[kingIdx + 6]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx + 6]->color != kingColor)))
+        {
+            return true;
+        }
+        if (startCol < 6 && (this->pieces[kingIdx + 10] && (this->pieces[kingIdx + 10]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx + 10]->color != kingColor)))
+        {
+            return true;
+        }
+    }
+    if (startRow < 6)
+    {
+        if (startCol > 0 && (this->pieces[kingIdx + 15] && (this->pieces[kingIdx + 15]->type == Piece::Type::KNIGHT)) && (this->pieces[kingIdx + 15]->color != kingColor))
+        {
+            return true;
+        }
+        if (startCol < 7 && (this->pieces[kingIdx + 17] && (this->pieces[kingIdx + 17]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx + 17]->color != kingColor)))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // This function does the following:
@@ -313,7 +392,7 @@ Chess *Chess::MovePiece(const short start, const short end, const bool updateOcc
     {
         ++nextMoveGame->lastPawnOrTake;
     }
-    nextMoveGame->turn = (this->turn == Piece::Color::WHITE) ? Piece::Color::BLACK ? Piece::Color::WHITE;
+    nextMoveGame->turn = (this->turn == Piece::Color::WHITE) ? Piece::Color::BLACK : Piece::Color::WHITE;
     if (this->turn == Piece::Color::BLACK)
     {
         ++this->fullTurns;
@@ -341,7 +420,7 @@ Chess *Chess::UpgradePawn(const short start, const short end, const Piece::Type 
     {
         nextMoveGame->enPassantIdx = -1;
     }
-    nextMoveGame->turn = (this->turn == Piece::Color::WHITE) ? Piece::Color::BLACK ? Piece::Color::WHITE;
+    nextMoveGame->turn = (this->turn == Piece::Color::WHITE) ? Piece::Color::BLACK : Piece::Color::WHITE;
     if (this->turn == Piece::Color::BLACK)
     {
         ++this->fullTurns;
@@ -357,7 +436,6 @@ std::vector<Chess *> Chess::LegalMoves()
     std::vector<Chess *> pseudoLegalMoves;
     Piece::Type promotions[4] = {Piece::Type::QUEEN, Piece::Type::ROOK, Piece::Type::BISHOP, Piece::Type::KNIGHT};
     // iterating over rows and columns is a lot easier than 0-63 directly (avoids modular math)
-    short diagonals[4] = {-9, -7, 7, 9};
     std::string fenString = "";
     for (auto row = 0; row < 8; ++row)
     {
@@ -365,7 +443,7 @@ std::vector<Chess *> Chess::LegalMoves()
         {
             auto idx = (8 * row) + col;
             Piece *currPiece = this->pieces[idx];
-            if (currPiece->color == this->turn)
+            if (currPiece && currPiece->color == this->turn)
             {
                 switch (currPiece->type)
                 {
@@ -449,7 +527,7 @@ std::vector<Chess *> Chess::LegalMoves()
                             // En Passant Take
                             else if (this->enPassantIdx == (idx + 9))
                             {
-                                Chess *nextMoveGame = this->MovePiece(idx, idx + 9);
+                                Chess *nextMoveGame = this->MovePiece(idx, idx + 9, false);
                                 nextMoveGame->pieces[idx + 1] = nullptr;
                                 fenString = nextMoveGame->BoardIdx();
                                 nextMoveGame->occurrences[fenString] = 1;
@@ -496,7 +574,7 @@ std::vector<Chess *> Chess::LegalMoves()
                                     // Check if taking leads to promotion
                                     for (auto option : promotions)
                                     {
-                                        pseudoLegalMoves.push_back(this->UpgradePawn(idx, idx - 7, option))
+                                        pseudoLegalMoves.push_back(this->UpgradePawn(idx, idx - 7, option));
                                     }
                                 }
                                 else
@@ -592,24 +670,52 @@ std::vector<Chess *> Chess::LegalMoves()
                     }
                     break;
                 case Piece::Type::BISHOP:
-                    for (auto direction : diagonals)
+                    // -9
+                    for (short x = 1, nextIdx = idx - 9; (x <= row) && (x <= col); ++x, nextIdx -= 9)
                     {
-                        auto rowIteration = (direction > 0) ? 1 : -1;
-                        auto colIteration = (direction % 8 == 1) ? 1 : -1;
-                        for (auto newRow = row + rowIteration; newRow >= 0 && newRow < 8; newRow += rowIteration)
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
                         {
-                            for (auto newCol = col + colIteration; newCol >= 0 && newCol < 8; newCol += colIteration)
-                            {
-                                auto nextIdx = (newRow * 8) + newCol;
-                                if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
-                                {
-                                    pseudoLegalMoves.push_back(this->MovePiece(idx, nextIdx, true));
-                                }
-                                if (this->pieces[nextIdx])
-                                {
-                                    break;
-                                }
-                            }
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, nextIdx, true));
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    // -7
+                    for (short x = 1, nextIdx = idx - 7; (x <= row) && ((x + col) < 8); ++x, nextIdx -= 7)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, nextIdx, true));
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    // +7
+                    for (short x = 1, nextIdx = idx + 7; ((x + row) < 8) && (x <= col); ++x, nextIdx += 7)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, nextIdx, true));
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    // +9
+                    for (short x = 1, nextIdx = idx + 9; ((x + row) < 8) && ((x + col) < 8); ++x, nextIdx += 9)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, nextIdx, true));
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
                         }
                     }
                     break;
@@ -704,24 +810,52 @@ std::vector<Chess *> Chess::LegalMoves()
                     }
                     break;
                 case Piece::Type::QUEEN:
-                    for (auto direction : diagonals)
+                    // -9
+                    for (short x = 1, nextIdx = idx - 9; (x <= row) && (x <= col); ++x, nextIdx -= 9)
                     {
-                        auto rowIteration = (direction > 0) ? 1 : -1;
-                        auto colIteration = (direction % 8 == 1) ? 1 : -1;
-                        for (auto newRow = row + rowIteration; newRow >= 0 && newRow < 8; newRow += rowIteration)
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
                         {
-                            for (auto newCol = col + colIteration; newCol >= 0 && newCol < 8; newCol += colIteration)
-                            {
-                                auto nextIdx = (newRow * 8) + newCol;
-                                if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
-                                {
-                                    pseudoLegalMoves.push_back(this->MovePiece(idx, nextIdx, true));
-                                }
-                                if (this->pieces[nextIdx])
-                                {
-                                    break;
-                                }
-                            }
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, nextIdx, true));
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    // -7
+                    for (short x = 1, nextIdx = idx - 7; (x <= row) && ((x + col) < 8); ++x, nextIdx -= 7)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, nextIdx, true));
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    // +7
+                    for (short x = 1, nextIdx = idx + 7; ((x + row) < 8) && (x <= col); ++x, nextIdx += 7)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, nextIdx, true));
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    // +9
+                    for (short x = 1, nextIdx = idx + 9; ((x + row) < 8) && ((x + col) < 8); ++x, nextIdx += 9)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            pseudoLegalMoves.push_back(this->MovePiece(idx, nextIdx, true));
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
                         }
                     }
                     for (auto downIdx = idx - 8; downIdx >= 0; downIdx -= 8)
@@ -771,7 +905,6 @@ std::vector<Chess *> Chess::LegalMoves()
                     break;
                 default:
                     // King goes one any direction
-                    // Also castling ?
                     auto nextIdx = -1;
                     short directions[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
                     if (row != 0 && col != 0)
@@ -875,6 +1008,8 @@ std::vector<Chess *> Chess::LegalMoves()
             }
         }
     }
+    std::vector<Chess*> legalMoves;
+    // Castling
     if (this->turn == Piece::Color::WHITE)
     {
         if (this->wCastle && !this->pieces[5] && !this->pieces[6] && !this->InCheck(4, Piece::Color::WHITE) && !this->InCheck(5, Piece::Color::WHITE) && !this->InCheck(6, Piece::Color::WHITE))
@@ -888,6 +1023,7 @@ std::vector<Chess *> Chess::LegalMoves()
             nextMoveGame->pieces[5] = this->pieces[7];
             fenString = nextMoveGame->BoardIdx();
             nextMoveGame->occurrences[fenString]++;
+            legalMoves.push_back(nextMoveGame);
         }
         if (this->wQueenCastle && !this->pieces[1] && !this->pieces[2] && !this->pieces[3] && !this->InCheck(2, Piece::Color::WHITE) && !this->InCheck(3, Piece::Color::WHITE) && !this->InCheck(4, Piece::Color::WHITE))
         {
@@ -900,6 +1036,7 @@ std::vector<Chess *> Chess::LegalMoves()
             nextMoveGame->pieces[3] = this->pieces[0];
             fenString = nextMoveGame->BoardIdx();
             nextMoveGame->occurrences[fenString]++;
+            legalMoves.push_back(nextMoveGame);
         }
     }
     else
@@ -915,6 +1052,7 @@ std::vector<Chess *> Chess::LegalMoves()
             nextMoveGame->pieces[61] = this->pieces[63];
             fenString = nextMoveGame->BoardIdx();
             nextMoveGame->occurrences[fenString]++;
+            legalMoves.push_back(nextMoveGame);
         }
         if (this->bQueenCastle && !this->pieces[57] && !this->pieces[58] && !this->pieces[59] && !this->InCheck(58, Piece::Color::BLACK) && !this->InCheck(59, Piece::Color::BLACK) && !this->InCheck(60, Piece::Color::BLACK))
         {
@@ -927,8 +1065,25 @@ std::vector<Chess *> Chess::LegalMoves()
             nextMoveGame->pieces[59] = this->pieces[56];
             fenString = nextMoveGame->BoardIdx();
             nextMoveGame->occurrences[fenString]++;
+            legalMoves.push_back(nextMoveGame);
         }
     }
+    short possibleGameKing = this->turn == Piece::Color::WHITE ? 4 : 60;
+    for(Chess* possibleGame : pseudoLegalMoves) {
+        // Get King Index for color that just moved
+        if (!possibleGame->pieces[possibleGameKing] || (possibleGame->pieces[possibleGameKing]->type != Piece::Type::KING) || (possibleGame->pieces[possibleGameKing]->color != this->turn)) {
+            for (auto x = 0; x < 64; ++x) {
+                if (possibleGame->pieces[x] && (possibleGame->pieces[x]->type == Piece::Type::KING) && (possibleGame->pieces[x]->color == this->turn)) {
+                    possibleGameKing = x; break;
+                }
+            }
+        }
+        // Check legality
+        if (!possibleGame->InCheck(possibleGameKing, this->turn)) {
+            legalMoves.push_back(possibleGame);
+        }
+    }
+    return legalMoves;
 }
 
 std::string Chess::ConvertToFEN()
@@ -1023,7 +1178,7 @@ std::string Chess::BoardIdx()
     // fourth part: en passant square
     if (this->enPassantIdx == -1)
     {
-        fenString += "- ";
+        fenString += "-";
     }
     else
     {
