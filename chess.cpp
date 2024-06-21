@@ -439,7 +439,7 @@ int Chess::Perft(const int depth)
                                 numNodes += nextMoveGame->Perft(depth - 1);
                                 delete nextMoveGame;
                                 // Check if we can move 2 squares
-                                if (idx < 16 && !this->pieces[idx + 16])
+                                if (row == 1 && !this->pieces[idx + 16])
                                 {
                                     Chess *nextMoveGame = this->MovePiece(idx, idx + 16, false);
                                     nextMoveGame->enPassantIdx = idx + 8;
@@ -544,7 +544,7 @@ int Chess::Perft(const int depth)
                                 numNodes += nextMoveGame->Perft(depth - 1);
                                 delete nextMoveGame;
                                 // Check if we can move two squares
-                                if (idx >= 48 && !this->pieces[idx - 16])
+                                if (row == 6 && !this->pieces[idx - 16])
                                 {
                                     Chess *nextMoveGame = this->MovePiece(idx, idx - 16, false);
                                     nextMoveGame->enPassantIdx = idx - 8;
