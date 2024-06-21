@@ -5,14 +5,14 @@
 int testOne(const int nodesLen)
 {
   Chess *currGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0");
-  long expectedNodes[nodesLen] = {1, 20, 400, 8902, 197281, 4865609, 119060324};
+  PerftResults expectedResults[nodesLen] = {};
   for (auto x = 0; x < nodesLen; ++x)
   {
-    int result = currGame->Perft(x);
-    if (result != expectedNodes[x])
+    PerftResults result = currGame->Perft(x);
+    if (result != expectedResults[x])
     {
       std::cout << "Failed Test One" << std::endl
-                << "Expected:\t" << expectedNodes[x] << std::endl
+                << "Expected:\t" << expectedResults[x].toString() << std::endl
                 << "Actual:\t\t" << result << std::endl;
       return x;
     }
