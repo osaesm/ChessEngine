@@ -5,34 +5,9 @@
 
 int main()
 {
-    Chess *currGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0");
-    // currGame->PrintBoard();
-    // std::cout << currGame->ConvertToFEN() << std::endl;
-    // std::cout << currGame->InCheck(4, Piece::Color::WHITE) << std::endl;
-    // int depth = 6;
-    // std::vector<Chess *> previousLayer;
-    // std::vector<Chess *> nextLayer;
-    // previousLayer.push_back(currGame);
-    // for (int x = 0; x < depth; ++x) {
-    //     std::cout << previousLayer.size() << std::endl;
-    //     if (nextLayer.size() != 20 && nextLayer.size()) {
-    //         for (Chess * nextGame: nextLayer) {
-    //             nextGame->PrintBoard();
-    //         }
-    //         break;
-    //     }
-    //     for (auto y = 0; y < previousLayer.size(); ++y) {
-    //         Chess *game = previousLayer[y];
-    //         for (Chess* nextGame : game->LegalMoves()) {
-    //             nextLayer.push_back(nextGame);
-    //         }
-    //         // free(game);
-    //     }
-    //     previousLayer = nextLayer;
-    //     nextLayer.clear();
-    // }
-    // std::cout << previousLayer.size() << std::endl;
-    std::cout << currGame->Perft(5) << std::endl;
+    // Chess *currGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0");
+    Chess *currGame = new Chess("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0");
+    std::cout << currGame->Perft(3) << std::endl;
     currGame->ClearPieces();
     delete currGame;
     return 0;

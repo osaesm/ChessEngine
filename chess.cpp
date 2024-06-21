@@ -1057,6 +1057,68 @@ int Chess::Perft(const int depth)
             }
         }
     }
+    if (this->turn == Piece::Color::WHITE)
+    {
+        if (this->wCastle && !this->pieces[5] && !this->pieces[6] && !this->InCheck(4, Piece::Color::WHITE) && !this->InCheck(5, Piece::Color::WHITE) && !this->InCheck(6, Piece::Color::WHITE))
+        {
+            Chess *nextMoveGame = this->MovePiece(4, 6, false);
+            nextMoveGame->wCastle = false;
+            if (nextMoveGame->wQueenCastle)
+            {
+                nextMoveGame->wQueenCastle = false;
+            }
+            nextMoveGame->pieces[5] = this->pieces[7];
+            fenString = nextMoveGame->BoardIdx();
+            nextMoveGame->occurrences[fenString]++;
+            numNodes += nextMoveGame->Perft(depth - 1);
+            delete nextMoveGame;
+        }
+        if (this->wQueenCastle && !this->pieces[1] && !this->pieces[2] && !this->pieces[3] && !this->InCheck(2, Piece::Color::WHITE) && !this->InCheck(3, Piece::Color::WHITE) && !this->InCheck(4, Piece::Color::WHITE))
+        {
+            Chess *nextMoveGame = this->MovePiece(4, 2, false);
+            nextMoveGame->wQueenCastle = false;
+            if (nextMoveGame->wCastle)
+            {
+                nextMoveGame->wCastle = false;
+            }
+            nextMoveGame->pieces[3] = this->pieces[0];
+            fenString = nextMoveGame->BoardIdx();
+            nextMoveGame->occurrences[fenString]++;
+            numNodes += nextMoveGame->Perft(depth - 1);
+            delete nextMoveGame;
+        }
+    }
+    else
+    {
+        if (this->bCastle && !this->pieces[61] && !this->pieces[62] && !this->InCheck(60, Piece::Color::BLACK) && !this->InCheck(61, Piece::Color::BLACK) && !this->InCheck(62, Piece::Color::BLACK))
+        {
+            Chess *nextMoveGame = this->MovePiece(60, 62, false);
+            nextMoveGame->bCastle = false;
+            if (nextMoveGame->bQueenCastle)
+            {
+                nextMoveGame->bQueenCastle = false;
+            }
+            nextMoveGame->pieces[61] = this->pieces[63];
+            fenString = nextMoveGame->BoardIdx();
+            nextMoveGame->occurrences[fenString]++;
+            numNodes += nextMoveGame->Perft(depth - 1);
+            delete nextMoveGame;
+        }
+        if (this->bQueenCastle && !this->pieces[57] && !this->pieces[58] && !this->pieces[59] && !this->InCheck(58, Piece::Color::BLACK) && !this->InCheck(59, Piece::Color::BLACK) && !this->InCheck(60, Piece::Color::BLACK))
+        {
+            Chess *nextMoveGame = this->MovePiece(60, 58, false);
+            nextMoveGame->bQueenCastle = false;
+            if (nextMoveGame->bCastle)
+            {
+                nextMoveGame->bCastle = false;
+            }
+            nextMoveGame->pieces[59] = this->pieces[56];
+            fenString = nextMoveGame->BoardIdx();
+            nextMoveGame->occurrences[fenString]++;
+            numNodes += nextMoveGame->Perft(depth - 1);
+            delete nextMoveGame;
+        }
+    }
     return numNodes;
 }
 
