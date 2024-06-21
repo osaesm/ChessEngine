@@ -82,6 +82,26 @@ int testFour(const int nodesLen)
   return nodesLen;
 }
 
+int testFive(const int nodesLen)
+{
+  Chess *currGame = new Chess("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  ");
+  long expectedNodes[nodesLen] = {1, 44, 1486, 62379, 2103487, 89941194};
+  for (auto x = 0; x < nodesLen; ++x)
+  {
+    int result = currGame->Perft(x);
+    if (result != expectedNodes[x])
+    {
+      std::cout << "Failed Test Five" << std::endl
+                << "Expected:\t" << expectedNodes[x] << std::endl
+                << "Actual:\t\t" << result << std::endl;
+      return x;
+    }
+  }
+  currGame->ClearPieces();
+  delete currGame;
+  return nodesLen;
+}
+
 int main()
 {
   int resultsOne = testOne(7);
@@ -120,7 +140,17 @@ int main()
   {
     std::cout << "Passed Test Four!" << std::endl;
   }
-
-  std::cout << "Overall Score: " << (resultsOne + resultsTwo + resultsThree + resultsFour) << "/" << (7 + 7 + 9 + 7) << std::endl;
+  int resultsFive = testFive(6);
+  if (resultsFour < 6)
+  {
+    std::cout << "Failed Test Five: " << resultsFive << "/" << 6 << std::endl;
+  }
+  else
+  {
+    std::cout << "Passed Test Five!" << std::endl;
+  }
+  int actualScore = resultsOne + resultsTwo + resultsThree + resultsFour + resultsFive;
+  int expectedScore = 7 + 7 + 9 + 7 + 6;
+  std::cout << "Overall Score: " << actualScore << "/" << expectedScore << std::endl;
   return 0;
 }

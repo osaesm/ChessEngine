@@ -423,7 +423,7 @@ int Chess::Perft(const int depth)
             if (!this->pieces[idx + 8])
             {
               // Check if this move leads to promotion
-              if (row + 1 == 7)
+              if (row == 6)
               {
                 for (auto option : promotions)
                 {
@@ -454,10 +454,10 @@ int Chess::Perft(const int depth)
             if (col != 0)
             {
               // Normal take
-              if ((this->pieces[idx + 7] != nullptr) && (this->pieces[idx + 7]->color == Piece::Color::BLACK))
+              if (this->pieces[idx + 7] && (this->pieces[idx + 7]->color == Piece::Color::BLACK))
               {
                 // Does taking lead to promotion
-                if (row + 1 == 7)
+                if (row == 6)
                 {
                   for (auto option : promotions)
                   {
@@ -489,10 +489,10 @@ int Chess::Perft(const int depth)
             if (col != 7)
             {
               // Normal take
-              if ((this->pieces[idx + 9] != nullptr) && (this->pieces[idx + 9]->color == Piece::Color::BLACK))
+              if (this->pieces[idx + 9] && (this->pieces[idx + 9]->color == Piece::Color::BLACK))
               {
                 // Does taking lead to promotion
-                if (row + 1 == 7)
+                if (row == 6)
                 {
                   for (auto option : promotions)
                   {
@@ -528,7 +528,7 @@ int Chess::Perft(const int depth)
             if (!this->pieces[idx - 8])
             {
               // Check if the move leads to promotion
-              if (row - 1 == 0)
+              if (row == 1)
               {
                 for (auto option : promotions)
                 {
@@ -559,9 +559,9 @@ int Chess::Perft(const int depth)
             if (col != 7)
             {
               // Normal Take
-              if ((this->pieces[idx - 7] != nullptr) && (this->pieces[idx - 7]->color == Piece::Color::WHITE))
+              if (this->pieces[idx - 7] && (this->pieces[idx - 7]->color == Piece::Color::WHITE))
               {
-                if (row - 1 == 0)
+                if (row == 1)
                 {
                   // Check if taking leads to promotion
                   for (auto option : promotions)
@@ -594,10 +594,10 @@ int Chess::Perft(const int depth)
             if (col != 0)
             {
               // Normal take
-              if ((this->pieces[idx - 9] != nullptr) && (this->pieces[idx - 9]->color == Piece::Color::WHITE))
+              if (this->pieces[idx - 9] && (this->pieces[idx - 9]->color == Piece::Color::WHITE))
               {
                 // Check if taking leads to promotion
-                if (row - 1 == 0)
+                if (row == 1)
                 {
                   for (auto option : promotions)
                   {
