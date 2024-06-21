@@ -764,7 +764,7 @@ std::vector<Chess *> Chess::LegalMoves()
                             break;
                         }
                     }
-                    for (auto leftIdx = idx - 1; leftIdx >= (idx - (idx % 8)); --leftIdx)
+                    for (auto leftIdx = idx - 1; leftIdx >= (idx - col); --leftIdx)
                     {
                         if (!this->pieces[leftIdx] || (this->pieces[leftIdx]->color != this->turn))
                         {
@@ -786,7 +786,7 @@ std::vector<Chess *> Chess::LegalMoves()
                             break;
                         }
                     }
-                    for (auto rightIdx = idx + 1; rightIdx < idx + (8 - (idx % 8)); ++rightIdx)
+                    for (auto rightIdx = idx + 1; rightIdx < idx + (8 - col); ++rightIdx)
                     {
                         if (!this->pieces[rightIdx] || (this->pieces[rightIdx]->color != this->turn))
                         {
@@ -880,7 +880,7 @@ std::vector<Chess *> Chess::LegalMoves()
                             break;
                         }
                     }
-                    for (auto leftIdx = idx - 1; leftIdx >= (idx - (idx % 8)); --leftIdx)
+                    for (auto leftIdx = idx - 1; leftIdx >= (idx - col); --leftIdx)
                     {
                         if (!this->pieces[leftIdx] || (this->pieces[leftIdx]->color != this->turn))
                         {
@@ -891,7 +891,7 @@ std::vector<Chess *> Chess::LegalMoves()
                             break;
                         }
                     }
-                    for (auto rightIdx = idx + 1; rightIdx < idx + (8 - (idx % 8)); ++rightIdx)
+                    for (auto rightIdx = idx + 1; rightIdx < idx + (8 - col); ++rightIdx)
                     {
                         if (!this->pieces[rightIdx] || (this->pieces[rightIdx]->color != this->turn))
                         {
@@ -905,7 +905,7 @@ std::vector<Chess *> Chess::LegalMoves()
                     break;
                 default:
                     // King goes one any direction
-                    auto nextIdx = -1;
+                    auto nextIdx = 0;
                     short directions[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
                     if (row != 0 && col != 0)
                     {
@@ -1008,7 +1008,7 @@ std::vector<Chess *> Chess::LegalMoves()
             }
         }
     }
-    std::vector<Chess*> legalMoves;
+    std::vector<Chess *> legalMoves;
     // Castling
     if (this->turn == Piece::Color::WHITE)
     {
@@ -1069,17 +1069,23 @@ std::vector<Chess *> Chess::LegalMoves()
         }
     }
     short possibleGameKing = this->turn == Piece::Color::WHITE ? 4 : 60;
-    for(Chess* possibleGame : pseudoLegalMoves) {
+    for (Chess *possibleGame : pseudoLegalMoves)
+    {
         // Get King Index for color that just moved
-        if (!possibleGame->pieces[possibleGameKing] || (possibleGame->pieces[possibleGameKing]->type != Piece::Type::KING) || (possibleGame->pieces[possibleGameKing]->color != this->turn)) {
-            for (auto x = 0; x < 64; ++x) {
-                if (possibleGame->pieces[x] && (possibleGame->pieces[x]->type == Piece::Type::KING) && (possibleGame->pieces[x]->color == this->turn)) {
-                    possibleGameKing = x; break;
+        if (!possibleGame->pieces[possibleGameKing] || (possibleGame->pieces[possibleGameKing]->type != Piece::Type::KING) || (possibleGame->pieces[possibleGameKing]->color != this->turn))
+        {
+            for (auto x = 0; x < 64; ++x)
+            {
+                if (possibleGame->pieces[x] && (possibleGame->pieces[x]->type == Piece::Type::KING) && (possibleGame->pieces[x]->color == this->turn))
+                {
+                    possibleGameKing = x;
+                    break;
                 }
             }
         }
         // Check legality
-        if (!possibleGame->InCheck(possibleGameKing, this->turn)) {
+        if (!possibleGame->InCheck(possibleGameKing, this->turn))
+        {
             legalMoves.push_back(possibleGame);
         }
     }

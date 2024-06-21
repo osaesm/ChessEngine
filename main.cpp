@@ -9,7 +9,7 @@ int main()
     // currGame->PrintBoard();
     // std::cout << currGame->ConvertToFEN() << std::endl;
     // std::cout << currGame->InCheck(4, Piece::Color::WHITE) << std::endl;
-    int depth = 4;
+    int depth = 6;
     std::vector<Chess *> previousLayer;
     std::vector<Chess *> nextLayer;
     previousLayer.push_back(currGame);
@@ -26,7 +26,7 @@ int main()
             for (Chess* nextGame : game->LegalMoves()) {
                 nextLayer.push_back(nextGame);
             }
-            free(game);
+            // free(game);
         }
         previousLayer = nextLayer;
         nextLayer.clear();
