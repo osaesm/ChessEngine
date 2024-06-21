@@ -43,6 +43,8 @@ public:
     std::string BoardIdx();
     std::string ConvertToFEN();
     bool InCheck(const short kingIdx, const Piece::Color kingColor);
+    int Perft(const int depth);
+    std::vector<Chess*> PseudolegalMoves();
     std::vector<Chess*> LegalMoves();
     void PrintBoard();
 };

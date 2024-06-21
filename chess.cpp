@@ -373,6 +373,600 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
     return false;
 }
 
+int Chess::Perft(const int depth) {
+    for (auto x = 0; x < 64; ++x) {
+        if (this->pieces[x] && this->pieces[x]->type == Piece::Type::KING && this->pieces[x]->color != this->turn) {
+            if (this->InCheck(x, (Piece::Color) !this->turn)) {
+                return 0;
+            }
+            break;
+        }
+    }
+    if (depth == 0) {
+        return 1;
+    }
+    int numNodes = 0;
+    // PseudoLegalMoves
+    // See if move is actually legal
+    Piece::Type promotions[4] = {Piece::Type::QUEEN, Piece::Type::ROOK, Piece::Type::BISHOP, Piece::Type::KNIGHT};
+    // iterating over rows and columns is a lot easier than 0-63 directly (avoids modular math)
+    std::string fenString = "";
+    for (auto row = 0; row < 8; ++row)
+    {
+        for (auto col = 0; col < 8; ++col)
+        {
+            auto idx = (8 * row) + col;
+            Piece *currPiece = this->pieces[idx];
+            if (currPiece && currPiece->color == this->turn)
+            {
+                switch (currPiece->type)
+                {
+                case Piece::Type::PAWN:
+                    // White Pawn
+                    if (currPiece->color == Piece::Color::WHITE)
+                    {
+                        // Check if we can go one space forward)
+                        if (!this->pieces[idx + 8])
+                        {
+                            // Check if this move leads to promotion
+                            if (row + 1 == 7)
+                            {
+                                for (auto option : promotions)
+                                {
+                                    Chess *nextMoveGame = this->UpgradePawn(idx, idx + 8, option);
+                                    numNodes += nextMoveGame->Perft(depth - 1);
+                                }
+                            }
+                            else
+                            {
+                                Chess *nextMoveGame = this->MovePiece(idx, idx + 8, true);
+                                numNodes += nextMoveGame->Perft(depth - 1);
+                                // Check if we can move 2 squares
+                                if (idx < 16 && !this->pieces[idx + 16])
+                                {
+                                    Chess *nextMoveGame = this->MovePiece(idx, idx + 16, false);
+                                    nextMoveGame->enPassantIdx = idx + 8;
+                                    fenString = nextMoveGame->BoardIdx();
+                                    nextMoveGame->occurrences[fenString] = 1;
+                                    numNodes += nextMoveGame->Perft(depth - 1);
+                                }
+                            }
+                        }
+                        // Check if we can take left
+                        if (col != 0)
+                        {
+                            // Normal take
+                            if ((this->pieces[idx + 7] != nullptr) && (this->pieces[idx + 7]->color == Piece::Color::BLACK))
+                            {
+                                // Does taking lead to promotion
+                                if (row + 1 == 7)
+                                {
+                                    for (auto option : promotions)
+                                    {
+                                        numNodes += (this->UpgradePawn(idx, idx + 7, option))->Perft(depth - 1);
+                                    }
+                                }
+                                else
+                                {
+                                    numNodes += (this->MovePiece(idx, idx + 7, true))->Perft(depth - 1);
+                                }
+                            }
+                            // En Passant Take
+                            else if (this->enPassantIdx == (idx + 7))
+                            {
+                                Chess *nextMoveGame = this->MovePiece(idx, idx + 7, false);
+                                nextMoveGame->pieces[idx - 1] = nullptr;
+                                fenString = nextMoveGame->BoardIdx();
+                                nextMoveGame->occurrences[fenString] = 1;
+                                numNodes += nextMoveGame->Perft(depth - 1);
+                            }
+                        }
+                        // Check if we can take right
+                        if (col != 7)
+                        {
+                            // Normal take
+                            if ((this->pieces[idx + 9] != nullptr) && (this->pieces[idx + 9]->color == Piece::Color::BLACK))
+                            {
+                                // Does taking lead to promotion
+                                if (row + 1 == 7)
+                                {
+                                    for (auto option : promotions)
+                                    {
+                                        numNodes += (this->UpgradePawn(idx, idx + 9, option))->Perft(depth - 1);
+                                    }
+                                }
+                                else
+                                {
+                                    numNodes += (this->MovePiece(idx, idx + 9, true))->Perft(depth - 1);
+                                }
+                            }
+                            // En Passant Take
+                            else if (this->enPassantIdx == (idx + 9))
+                            {
+                                Chess *nextMoveGame = this->MovePiece(idx, idx + 9, false);
+                                nextMoveGame->pieces[idx + 1] = nullptr;
+                                fenString = nextMoveGame->BoardIdx();
+                                nextMoveGame->occurrences[fenString] = 1;
+                                numNodes += nextMoveGame->Perft(depth - 1);
+                            }
+                        }
+                    }
+                    // Black Pawn
+                    else
+                    {
+                        // Can we go forward
+                        if (!this->pieces[idx - 8])
+                        {
+                            // Check if the move leads to promotion
+                            if (row - 1 == 0)
+                            {
+                                for (auto option : promotions)
+                                {
+                                    numNodes += (this->UpgradePawn(idx, idx - 8, option))->Perft(depth - 1);
+                                }
+                            }
+                            else
+                            {
+                                numNodes += (this->MovePiece(idx, idx - 8, true))->Perft(depth - 1);
+                                // Check if we can move two squares
+                                if (idx >= 48 && !this->pieces[idx - 16])
+                                {
+                                    Chess *nextMoveGame = this->MovePiece(idx, idx - 16, false);
+                                    nextMoveGame->enPassantIdx = idx - 8;
+                                    fenString = nextMoveGame->BoardIdx();
+                                    nextMoveGame->occurrences[fenString] = 1;
+                                    numNodes += nextMoveGame->Perft(depth - 1);
+                                }
+                            }
+                        }
+                        // Check if we can take left
+                        if (col != 7)
+                        {
+                            // Normal Take
+                            if ((this->pieces[idx - 7] != nullptr) && (this->pieces[idx - 7]->color == Piece::Color::WHITE))
+                            {
+                                if (row - 1 == 0)
+                                {
+                                    // Check if taking leads to promotion
+                                    for (auto option : promotions)
+                                    {
+                                        numNodes += (this->UpgradePawn(idx, idx - 7, option))->Perft(depth - 1);
+                                    }
+                                }
+                                else
+                                {
+                                    numNodes += (this->MovePiece(idx, idx - 7, true))->Perft(depth - 1);
+                                }
+                            }
+                            // En Passant Take
+                            else if (this->enPassantIdx == (idx - 7))
+                            {
+                                Chess *nextMoveGame = this->MovePiece(idx, idx - 7, false);
+                                nextMoveGame->pieces[idx + 1] = nullptr;
+                                fenString = nextMoveGame->BoardIdx();
+                                nextMoveGame->occurrences[fenString] = 1;
+                                numNodes += nextMoveGame->Perft(depth - 1);
+                            }
+                        }
+                        // Check if we can take right
+                        if (col != 0)
+                        {
+                            // Normal take
+                            if ((this->pieces[idx - 9] != nullptr) && (this->pieces[idx - 9]->color == Piece::Color::WHITE))
+                            {
+                                // Check if taking leads to promotion
+                                if (row - 1 == 0)
+                                {
+                                    for (auto option : promotions)
+                                    {
+                                        numNodes += (this->UpgradePawn(idx, idx - 9, option))->Perft(depth - 1);
+                                    }
+                                }
+                                else
+                                {
+                                    numNodes += (this->MovePiece(idx, idx - 9, true))->Perft(depth - 1);
+                                }
+                            }
+                            // En Passant Take
+                            else if (this->enPassantIdx == (idx - 9))
+                            {
+                                Chess *nextMoveGame = this->MovePiece(idx, idx - 9, false);
+                                nextMoveGame->pieces[idx - 1] = nullptr;
+                                fenString = nextMoveGame->BoardIdx();
+                                nextMoveGame->occurrences[fenString] = 1;
+                                numNodes += nextMoveGame->Perft(depth - 1);
+                            }
+                        }
+                    }
+                    break;
+                case Piece::Type::KNIGHT:
+                    if (row > 1)
+                    {
+                        if (col > 0 && (!this->pieces[idx - 17] || (this->pieces[idx - 17]->color != this->turn)))
+                        {
+                            numNodes += (this->MovePiece(idx, idx - 17, true))->Perft(depth - 1);
+                        }
+                        if (col < 7 && (!this->pieces[idx - 15] || (this->pieces[idx - 15]->color != this->turn)))
+                        {
+                            numNodes += (this->MovePiece(idx, idx - 15, true))->Perft(depth - 1);
+                        }
+                    }
+                    if (row > 0)
+                    {
+                        if (col > 1 && (!this->pieces[idx - 10] || (this->pieces[idx - 10]->color != this->turn)))
+                        {
+                            numNodes += (this->MovePiece(idx, idx - 10, true))->Perft(depth - 1);
+                        }
+                        if (col < 6 && (!this->pieces[idx - 6] || (this->pieces[idx - 6]->color != this->turn)))
+                        {
+                            numNodes += (this->MovePiece(idx, idx - 6, true))->Perft(depth - 1);
+                        }
+                    }
+                    if (row < 7)
+                    {
+                        if (col > 1 && (!this->pieces[idx + 6] || (this->pieces[idx + 6]->color != this->turn)))
+                        {
+                            numNodes += (this->MovePiece(idx, idx + 6, true))->Perft(depth - 1);
+                        }
+                        if (col < 6 && (!this->pieces[idx + 10] || (this->pieces[idx + 10]->color != this->turn)))
+                        {
+                            numNodes += (this->MovePiece(idx, idx + 10, true))->Perft(depth - 1);
+                        }
+                    }
+                    if (row < 6)
+                    {
+                        if (col > 0 && (!this->pieces[idx + 15] || (this->pieces[idx + 15]->color != this->turn)))
+                        {
+                            numNodes += (this->MovePiece(idx, idx + 15, true))->Perft(depth - 1);
+                        }
+                        if (col < 7 && (!this->pieces[idx + 17] || (this->pieces[idx + 17]->color != this->turn)))
+                        {
+                            numNodes += (this->MovePiece(idx, idx + 17, true))->Perft(depth - 1);
+                        }
+                    }
+                    break;
+                case Piece::Type::BISHOP:
+                    // -9
+                    for (short x = 1, nextIdx = idx - 9; (x <= row) && (x <= col); ++x, nextIdx -= 9)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    // -7
+                    for (short x = 1, nextIdx = idx - 7; (x <= row) && ((x + col) < 8); ++x, nextIdx -= 7)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    // +7
+                    for (short x = 1, nextIdx = idx + 7; ((x + row) < 8) && (x <= col); ++x, nextIdx += 7)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    // +9
+                    for (short x = 1, nextIdx = idx + 9; ((x + row) < 8) && ((x + col) < 8); ++x, nextIdx += 9)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    break;
+                case Piece::Type::ROOK:
+                    for (auto downIdx = idx - 8; downIdx >= 0; downIdx -= 8)
+                    {
+                        if (!this->pieces[downIdx] || (this->pieces[downIdx]->color != this->turn))
+                        {
+                            Chess *nextMoveGame = this->MovePiece(idx, downIdx, false);
+                            if (nextMoveGame->bCastle && idx == 63)
+                            {
+                                nextMoveGame->bCastle = false;
+                            }
+                            else if (nextMoveGame->bQueenCastle && idx == 56)
+                            {
+                                nextMoveGame->bQueenCastle = false;
+                            }
+                            fenString = nextMoveGame->BoardIdx();
+                            nextMoveGame->occurrences[fenString]++;
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                        }
+                        if (this->pieces[downIdx])
+                        {
+                            break;
+                        }
+                    }
+                    for (auto upIdx = idx + 8; upIdx < 64; upIdx += 8)
+                    {
+                        if (!this->pieces[upIdx] || (this->pieces[upIdx]->color != this->turn))
+                        {
+                            Chess *nextMoveGame = this->MovePiece(idx, upIdx, false);
+                            if (nextMoveGame->wCastle && idx == 7)
+                            {
+                                nextMoveGame->wCastle = false;
+                            }
+                            else if (nextMoveGame->wQueenCastle && idx == 0)
+                            {
+                                nextMoveGame->wQueenCastle = false;
+                            }
+                            fenString = nextMoveGame->BoardIdx();
+                            nextMoveGame->occurrences[fenString]++;
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                        }
+                        if (this->pieces[upIdx])
+                        {
+                            break;
+                        }
+                    }
+                    for (auto leftIdx = idx - 1; leftIdx >= (idx - col); --leftIdx)
+                    {
+                        if (!this->pieces[leftIdx] || (this->pieces[leftIdx]->color != this->turn))
+                        {
+                            Chess *nextMoveGame = this->MovePiece(idx, leftIdx, false);
+                            if (nextMoveGame->wCastle && idx == 7)
+                            {
+                                nextMoveGame->wCastle = false;
+                            }
+                            else if (nextMoveGame->bCastle && idx == 63)
+                            {
+                                nextMoveGame->bCastle = false;
+                            }
+                            fenString = nextMoveGame->BoardIdx();
+                            nextMoveGame->occurrences[fenString]++;
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                        }
+                        if (this->pieces[leftIdx])
+                        {
+                            break;
+                        }
+                    }
+                    for (auto rightIdx = idx + 1; rightIdx < idx + (8 - col); ++rightIdx)
+                    {
+                        if (!this->pieces[rightIdx] || (this->pieces[rightIdx]->color != this->turn))
+                        {
+                            Chess *nextMoveGame = this->MovePiece(idx, rightIdx, false);
+                            if (nextMoveGame->wQueenCastle && idx == 0)
+                            {
+                                nextMoveGame->wQueenCastle = false;
+                            }
+                            else if (nextMoveGame->bQueenCastle && idx == 56)
+                            {
+                                nextMoveGame->bQueenCastle = false;
+                            }
+                            fenString = nextMoveGame->BoardIdx();
+                            nextMoveGame->occurrences[fenString]++;
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                        }
+                        if (this->pieces[rightIdx])
+                        {
+                            break;
+                        }
+                    }
+                    break;
+                case Piece::Type::QUEEN:
+                    // -9
+                    for (short x = 1, nextIdx = idx - 9; (x <= row) && (x <= col); ++x, nextIdx -= 9)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    // -7
+                    for (short x = 1, nextIdx = idx - 7; (x <= row) && ((x + col) < 8); ++x, nextIdx -= 7)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    // +7
+                    for (short x = 1, nextIdx = idx + 7; ((x + row) < 8) && (x <= col); ++x, nextIdx += 7)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    // +9
+                    for (short x = 1, nextIdx = idx + 9; ((x + row) < 8) && ((x + col) < 8); ++x, nextIdx += 9)
+                    {
+                        if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
+                        {
+                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                        }
+                        if (this->pieces[nextIdx])
+                        {
+                            break;
+                        }
+                    }
+                    for (auto downIdx = idx - 8; downIdx >= 0; downIdx -= 8)
+                    {
+                        if (!this->pieces[downIdx] || (this->pieces[downIdx]->color != this->turn))
+                        {
+                            numNodes += (this->MovePiece(idx, downIdx, true))->Perft(depth - 1);
+                        }
+                        if (this->pieces[downIdx])
+                        {
+                            break;
+                        }
+                    }
+                    for (auto upIdx = idx + 8; upIdx < 64; upIdx += 8)
+                    {
+                        if (!this->pieces[upIdx] || (this->pieces[upIdx]->color != this->turn))
+                        {
+                            numNodes += (this->MovePiece(idx, upIdx, true))->Perft(depth - 1);
+                        }
+                        if (this->pieces[upIdx])
+                        {
+                            break;
+                        }
+                    }
+                    for (auto leftIdx = idx - 1; leftIdx >= (idx - col); --leftIdx)
+                    {
+                        if (!this->pieces[leftIdx] || (this->pieces[leftIdx]->color != this->turn))
+                        {
+                            numNodes += (this->MovePiece(idx, leftIdx, true))->Perft(depth - 1);
+                        }
+                        if (this->pieces[leftIdx])
+                        {
+                            break;
+                        }
+                    }
+                    for (auto rightIdx = idx + 1; rightIdx < idx + (8 - col); ++rightIdx)
+                    {
+                        if (!this->pieces[rightIdx] || (this->pieces[rightIdx]->color != this->turn))
+                        {
+                            numNodes += (this->MovePiece(idx, rightIdx, true))->Perft(depth - 1);
+                        }
+                        if (this->pieces[rightIdx])
+                        {
+                            break;
+                        }
+                    }
+                    break;
+                default:
+                    // King goes one any direction
+                    auto nextIdx = 0;
+                    short directions[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
+                    if (row != 0 && col != 0)
+                    {
+                        nextIdx = idx - 9;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            directions[0] = nextIdx;
+                        }
+                    }
+                    if (row != 0)
+                    {
+                        nextIdx = idx - 8;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            directions[1] = nextIdx;
+                        }
+                    }
+                    if (row != 0 && col != 7)
+                    {
+                        nextIdx = idx - 7;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            directions[2] = nextIdx;
+                        }
+                    }
+                    if (col != 0)
+                    {
+                        nextIdx = idx - 1;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            directions[3] = nextIdx;
+                        }
+                    }
+                    if (col != 7)
+                    {
+                        nextIdx = idx + 1;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            directions[4] = nextIdx;
+                        }
+                    }
+                    if (row != 7 && col != 0)
+                    {
+                        nextIdx = idx + 7;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            directions[5] = nextIdx;
+                        }
+                    }
+                    if (row != 7)
+                    {
+                        nextIdx = idx + 8;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            directions[6] = nextIdx;
+                        }
+                    }
+                    if (row != 7 && col != 7)
+                    {
+                        nextIdx = idx + 9;
+                        if (!this->pieces[nextIdx] || this->pieces[nextIdx]->color != this->turn)
+                        {
+                            directions[7] = nextIdx;
+                        }
+                    }
+                    for (auto i = 0; i < 8; ++i)
+                    {
+                        if (directions[i] != -1)
+                        {
+                            Chess *nextMoveGame = this->MovePiece(idx, directions[i], false);
+                            if (this->turn == Piece::Color::WHITE)
+                            {
+                                if (nextMoveGame->wCastle)
+                                {
+                                    nextMoveGame->wCastle = false;
+                                }
+                                if (nextMoveGame->wQueenCastle)
+                                {
+                                    nextMoveGame->wQueenCastle = false;
+                                }
+                            }
+                            else
+                            {
+                                if (nextMoveGame->bCastle)
+                                {
+                                    nextMoveGame->bCastle = false;
+                                }
+                                if (nextMoveGame->bQueenCastle)
+                                {
+                                    nextMoveGame->bQueenCastle = false;
+                                }
+                            }
+                            fenString = nextMoveGame->BoardIdx();
+                            nextMoveGame->occurrences[fenString]++;
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    return numNodes;    
+}
+
 // This function does the following:
 // * Creates a copy of the game
 // * Moves the piece from "start" to "end" in the copy
@@ -429,8 +1023,7 @@ Chess *Chess::UpgradePawn(const short start, const short end, const Piece::Type 
     return nextMoveGame;
 }
 
-std::vector<Chess *> Chess::LegalMoves()
-{
+std::vector<Chess *> Chess::PseudolegalMoves() {
     // PseudoLegalMoves
     // See if move is actually legal
     std::vector<Chess *> pseudoLegalMoves;
@@ -1008,6 +1601,12 @@ std::vector<Chess *> Chess::LegalMoves()
             }
         }
     }
+    return pseudoLegalMoves;
+}
+
+std::vector<Chess *> Chess::LegalMoves()
+{
+    std::string fenString = "";
     std::vector<Chess *> legalMoves;
     // Castling
     if (this->turn == Piece::Color::WHITE)
@@ -1069,7 +1668,7 @@ std::vector<Chess *> Chess::LegalMoves()
         }
     }
     short possibleGameKing = this->turn == Piece::Color::WHITE ? 4 : 60;
-    for (Chess *possibleGame : pseudoLegalMoves)
+    for (Chess *possibleGame : this->PseudolegalMoves())
     {
         // Get King Index for color that just moved
         if (!possibleGame->pieces[possibleGameKing] || (possibleGame->pieces[possibleGameKing]->type != Piece::Type::KING) || (possibleGame->pieces[possibleGameKing]->color != this->turn))
