@@ -11,7 +11,7 @@ int testOne(const int nodesLen)
         int result = currGame->Perft(x);
         if (result != expectedNodes[x])
         {
-            std::cout << "Failed Test One" << std::endl << "Expected:\t"
+            std::cout << "Failed Test One" << std::endl << "Expected:\t" << expectedNodes[x] << std::endl << "Actual:\t\t" << result << std::endl;
             return x;
         }
     }
@@ -29,6 +29,7 @@ int testTwo(const int nodesLen)
         int result = currGame->Perft(x);
         if (result != expectedNodes[x])
         {
+            std::cout << "Failed Test Two" << std::endl << "Expected:\t" << expectedNodes[x] << std::endl << "Actual:\t\t" << result << std::endl;
             return x;
         }
     }
@@ -46,6 +47,7 @@ int testThree(const int nodesLen)
         int result = currGame->Perft(x);
         if (result != expectedNodes[x])
         {
+            std::cout << "Failed Test Three" << std::endl << "Expected:\t" << expectedNodes[x] << std::endl << "Actual:\t\t" << result << std::endl;
             return x;
         }
     }
@@ -63,6 +65,7 @@ int testFour(const int nodesLen)
         int result = currGame->Perft(x);
         if (result != expectedNodes[x])
         {
+            std::cout << "Failed Test Four" << std::endl << "Expected:\t" << expectedNodes[x] << std::endl << "Actual:\t\t" << result << std::endl;
             return x;
         }
     }
