@@ -47,6 +47,7 @@ public:
     std::vector<Chess*> PseudolegalMoves();
     std::vector<Chess*> LegalMoves();
     void PrintBoard();
+    void ClearPieces();
 };
 
 #endif

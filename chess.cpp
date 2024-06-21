@@ -157,6 +157,15 @@ Chess::Chess(const Chess &originalGame)
     this->fullTurns = originalGame.fullTurns;
 }
 
+void Chess::ClearPieces()
+{
+    for (auto idx = 0; idx < 64; ++idx)
+    {
+        if (this->pieces[idx])
+            delete this->pieces[idx];
+    }
+}
+
 // Sees if other color has king in check from kingIdx
 bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
 {
@@ -373,16 +382,21 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
     return false;
 }
 
-int Chess::Perft(const int depth) {
-    for (auto x = 0; x < 64; ++x) {
-        if (this->pieces[x] && this->pieces[x]->type == Piece::Type::KING && this->pieces[x]->color != this->turn) {
-            if (this->InCheck(x, (Piece::Color) !this->turn)) {
+int Chess::Perft(const int depth)
+{
+    for (auto x = 0; x < 64; ++x)
+    {
+        if (this->pieces[x] && this->pieces[x]->type == Piece::Type::KING && this->pieces[x]->color != this->turn)
+        {
+            if (this->InCheck(x, (Piece::Color) !this->turn))
+            {
                 return 0;
             }
             break;
         }
     }
-    if (depth == 0) {
+    if (depth == 0)
+    {
         return 1;
     }
     int numNodes = 0;
@@ -415,12 +429,15 @@ int Chess::Perft(const int depth) {
                                 {
                                     Chess *nextMoveGame = this->UpgradePawn(idx, idx + 8, option);
                                     numNodes += nextMoveGame->Perft(depth - 1);
+                                    delete nextMoveGame->pieces[idx + 8];
+                                    delete nextMoveGame;
                                 }
                             }
                             else
                             {
                                 Chess *nextMoveGame = this->MovePiece(idx, idx + 8, true);
                                 numNodes += nextMoveGame->Perft(depth - 1);
+                                delete nextMoveGame;
                                 // Check if we can move 2 squares
                                 if (idx < 16 && !this->pieces[idx + 16])
                                 {
@@ -429,6 +446,7 @@ int Chess::Perft(const int depth) {
                                     fenString = nextMoveGame->BoardIdx();
                                     nextMoveGame->occurrences[fenString] = 1;
                                     numNodes += nextMoveGame->Perft(depth - 1);
+                                    delete nextMoveGame;
                                 }
                             }
                         }
@@ -443,12 +461,17 @@ int Chess::Perft(const int depth) {
                                 {
                                     for (auto option : promotions)
                                     {
-                                        numNodes += (this->UpgradePawn(idx, idx + 7, option))->Perft(depth - 1);
+                                        Chess *nextMoveGame = this->UpgradePawn(idx, idx + 7, option);
+                                        numNodes += nextMoveGame->Perft(depth - 1);
+                                        delete nextMoveGame->pieces[idx + 7];
+                                        delete nextMoveGame;
                                     }
                                 }
                                 else
                                 {
-                                    numNodes += (this->MovePiece(idx, idx + 7, true))->Perft(depth - 1);
+                                    Chess *nextMoveGame = this->MovePiece(idx, idx + 7, true);
+                                    numNodes += nextMoveGame->Perft(depth - 1);
+                                    delete nextMoveGame;
                                 }
                             }
                             // En Passant Take
@@ -459,6 +482,7 @@ int Chess::Perft(const int depth) {
                                 fenString = nextMoveGame->BoardIdx();
                                 nextMoveGame->occurrences[fenString] = 1;
                                 numNodes += nextMoveGame->Perft(depth - 1);
+                                delete nextMoveGame;
                             }
                         }
                         // Check if we can take right
@@ -472,12 +496,17 @@ int Chess::Perft(const int depth) {
                                 {
                                     for (auto option : promotions)
                                     {
-                                        numNodes += (this->UpgradePawn(idx, idx + 9, option))->Perft(depth - 1);
+                                        Chess *nextMoveGame = this->UpgradePawn(idx, idx + 9, option);
+                                        numNodes += nextMoveGame->Perft(depth - 1);
+                                        delete nextMoveGame->pieces[idx + 9];
+                                        delete nextMoveGame;
                                     }
                                 }
                                 else
                                 {
-                                    numNodes += (this->MovePiece(idx, idx + 9, true))->Perft(depth - 1);
+                                    Chess *nextMoveGame = this->MovePiece(idx, idx + 9, true);
+                                    numNodes += nextMoveGame->Perft(depth - 1);
+                                    delete nextMoveGame;
                                 }
                             }
                             // En Passant Take
@@ -488,6 +517,7 @@ int Chess::Perft(const int depth) {
                                 fenString = nextMoveGame->BoardIdx();
                                 nextMoveGame->occurrences[fenString] = 1;
                                 numNodes += nextMoveGame->Perft(depth - 1);
+                                delete nextMoveGame;
                             }
                         }
                     }
@@ -502,12 +532,17 @@ int Chess::Perft(const int depth) {
                             {
                                 for (auto option : promotions)
                                 {
-                                    numNodes += (this->UpgradePawn(idx, idx - 8, option))->Perft(depth - 1);
+                                    Chess *nextMoveGame = this->UpgradePawn(idx, idx - 8, option);
+                                    numNodes += nextMoveGame->Perft(depth - 1);
+                                    delete nextMoveGame->pieces[idx - 8];
+                                    delete nextMoveGame;
                                 }
                             }
                             else
                             {
-                                numNodes += (this->MovePiece(idx, idx - 8, true))->Perft(depth - 1);
+                                Chess *nextMoveGame = this->MovePiece(idx, idx - 8, true);
+                                numNodes += nextMoveGame->Perft(depth - 1);
+                                delete nextMoveGame;
                                 // Check if we can move two squares
                                 if (idx >= 48 && !this->pieces[idx - 16])
                                 {
@@ -516,6 +551,7 @@ int Chess::Perft(const int depth) {
                                     fenString = nextMoveGame->BoardIdx();
                                     nextMoveGame->occurrences[fenString] = 1;
                                     numNodes += nextMoveGame->Perft(depth - 1);
+                                    delete nextMoveGame;
                                 }
                             }
                         }
@@ -530,12 +566,17 @@ int Chess::Perft(const int depth) {
                                     // Check if taking leads to promotion
                                     for (auto option : promotions)
                                     {
-                                        numNodes += (this->UpgradePawn(idx, idx - 7, option))->Perft(depth - 1);
+                                        Chess *nextMoveGame = this->UpgradePawn(idx, idx - 7, option);
+                                        numNodes += nextMoveGame->Perft(depth - 1);
+                                        delete nextMoveGame->pieces[idx - 7];
+                                        delete nextMoveGame;
                                     }
                                 }
                                 else
                                 {
-                                    numNodes += (this->MovePiece(idx, idx - 7, true))->Perft(depth - 1);
+                                    Chess *nextMoveGame = this->MovePiece(idx, idx - 7, true);
+                                    numNodes += nextMoveGame->Perft(depth - 1);
+                                    delete nextMoveGame;
                                 }
                             }
                             // En Passant Take
@@ -546,6 +587,7 @@ int Chess::Perft(const int depth) {
                                 fenString = nextMoveGame->BoardIdx();
                                 nextMoveGame->occurrences[fenString] = 1;
                                 numNodes += nextMoveGame->Perft(depth - 1);
+                                delete nextMoveGame;
                             }
                         }
                         // Check if we can take right
@@ -559,12 +601,17 @@ int Chess::Perft(const int depth) {
                                 {
                                     for (auto option : promotions)
                                     {
-                                        numNodes += (this->UpgradePawn(idx, idx - 9, option))->Perft(depth - 1);
+                                        Chess *nextMoveGame = this->UpgradePawn(idx, idx - 9, option);
+                                        numNodes += nextMoveGame->Perft(depth - 1);
+                                        delete nextMoveGame->pieces[idx - 9];
+                                        delete nextMoveGame;
                                     }
                                 }
                                 else
                                 {
-                                    numNodes += (this->MovePiece(idx, idx - 9, true))->Perft(depth - 1);
+                                    Chess *nextMoveGame = this->MovePiece(idx, idx - 9, true);
+                                    numNodes += nextMoveGame->Perft(depth - 1);
+                                    delete nextMoveGame;
                                 }
                             }
                             // En Passant Take
@@ -575,6 +622,7 @@ int Chess::Perft(const int depth) {
                                 fenString = nextMoveGame->BoardIdx();
                                 nextMoveGame->occurrences[fenString] = 1;
                                 numNodes += nextMoveGame->Perft(depth - 1);
+                                delete nextMoveGame;
                             }
                         }
                     }
@@ -584,44 +632,60 @@ int Chess::Perft(const int depth) {
                     {
                         if (col > 0 && (!this->pieces[idx - 17] || (this->pieces[idx - 17]->color != this->turn)))
                         {
-                            numNodes += (this->MovePiece(idx, idx - 17, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, idx - 17, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (col < 7 && (!this->pieces[idx - 15] || (this->pieces[idx - 15]->color != this->turn)))
                         {
-                            numNodes += (this->MovePiece(idx, idx - 15, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, idx - 15, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                     }
                     if (row > 0)
                     {
                         if (col > 1 && (!this->pieces[idx - 10] || (this->pieces[idx - 10]->color != this->turn)))
                         {
-                            numNodes += (this->MovePiece(idx, idx - 10, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, idx - 10, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (col < 6 && (!this->pieces[idx - 6] || (this->pieces[idx - 6]->color != this->turn)))
                         {
-                            numNodes += (this->MovePiece(idx, idx - 6, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, idx - 6, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                     }
                     if (row < 7)
                     {
                         if (col > 1 && (!this->pieces[idx + 6] || (this->pieces[idx + 6]->color != this->turn)))
                         {
-                            numNodes += (this->MovePiece(idx, idx + 6, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, idx + 6, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (col < 6 && (!this->pieces[idx + 10] || (this->pieces[idx + 10]->color != this->turn)))
                         {
-                            numNodes += (this->MovePiece(idx, idx + 10, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, idx + 10, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                     }
                     if (row < 6)
                     {
                         if (col > 0 && (!this->pieces[idx + 15] || (this->pieces[idx + 15]->color != this->turn)))
                         {
-                            numNodes += (this->MovePiece(idx, idx + 15, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, idx + 15, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (col < 7 && (!this->pieces[idx + 17] || (this->pieces[idx + 17]->color != this->turn)))
                         {
-                            numNodes += (this->MovePiece(idx, idx + 17, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, idx + 17, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                     }
                     break;
@@ -631,7 +695,9 @@ int Chess::Perft(const int depth) {
                     {
                         if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
                         {
-                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, nextIdx, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[nextIdx])
                         {
@@ -643,7 +709,9 @@ int Chess::Perft(const int depth) {
                     {
                         if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
                         {
-                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, nextIdx, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[nextIdx])
                         {
@@ -655,7 +723,9 @@ int Chess::Perft(const int depth) {
                     {
                         if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
                         {
-                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, nextIdx, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[nextIdx])
                         {
@@ -667,7 +737,9 @@ int Chess::Perft(const int depth) {
                     {
                         if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
                         {
-                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, nextIdx, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[nextIdx])
                         {
@@ -692,6 +764,7 @@ int Chess::Perft(const int depth) {
                             fenString = nextMoveGame->BoardIdx();
                             nextMoveGame->occurrences[fenString]++;
                             numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[downIdx])
                         {
@@ -714,6 +787,7 @@ int Chess::Perft(const int depth) {
                             fenString = nextMoveGame->BoardIdx();
                             nextMoveGame->occurrences[fenString]++;
                             numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[upIdx])
                         {
@@ -736,6 +810,7 @@ int Chess::Perft(const int depth) {
                             fenString = nextMoveGame->BoardIdx();
                             nextMoveGame->occurrences[fenString]++;
                             numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[leftIdx])
                         {
@@ -758,6 +833,7 @@ int Chess::Perft(const int depth) {
                             fenString = nextMoveGame->BoardIdx();
                             nextMoveGame->occurrences[fenString]++;
                             numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[rightIdx])
                         {
@@ -771,7 +847,9 @@ int Chess::Perft(const int depth) {
                     {
                         if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
                         {
-                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, nextIdx, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[nextIdx])
                         {
@@ -783,7 +861,9 @@ int Chess::Perft(const int depth) {
                     {
                         if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
                         {
-                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, nextIdx, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[nextIdx])
                         {
@@ -795,7 +875,9 @@ int Chess::Perft(const int depth) {
                     {
                         if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
                         {
-                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, nextIdx, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[nextIdx])
                         {
@@ -807,7 +889,9 @@ int Chess::Perft(const int depth) {
                     {
                         if (!this->pieces[nextIdx] || (this->pieces[nextIdx]->color != this->turn))
                         {
-                            numNodes += (this->MovePiece(idx, nextIdx, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, nextIdx, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[nextIdx])
                         {
@@ -818,7 +902,9 @@ int Chess::Perft(const int depth) {
                     {
                         if (!this->pieces[downIdx] || (this->pieces[downIdx]->color != this->turn))
                         {
-                            numNodes += (this->MovePiece(idx, downIdx, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, downIdx, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[downIdx])
                         {
@@ -829,7 +915,9 @@ int Chess::Perft(const int depth) {
                     {
                         if (!this->pieces[upIdx] || (this->pieces[upIdx]->color != this->turn))
                         {
-                            numNodes += (this->MovePiece(idx, upIdx, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, upIdx, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[upIdx])
                         {
@@ -840,7 +928,9 @@ int Chess::Perft(const int depth) {
                     {
                         if (!this->pieces[leftIdx] || (this->pieces[leftIdx]->color != this->turn))
                         {
-                            numNodes += (this->MovePiece(idx, leftIdx, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, leftIdx, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[leftIdx])
                         {
@@ -851,7 +941,9 @@ int Chess::Perft(const int depth) {
                     {
                         if (!this->pieces[rightIdx] || (this->pieces[rightIdx]->color != this->turn))
                         {
-                            numNodes += (this->MovePiece(idx, rightIdx, true))->Perft(depth - 1);
+                            Chess *nextMoveGame = this->MovePiece(idx, rightIdx, true);
+                            numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                         if (this->pieces[rightIdx])
                         {
@@ -957,6 +1049,7 @@ int Chess::Perft(const int depth) {
                             fenString = nextMoveGame->BoardIdx();
                             nextMoveGame->occurrences[fenString]++;
                             numNodes += nextMoveGame->Perft(depth - 1);
+                            delete nextMoveGame;
                         }
                     }
                     break;
@@ -964,7 +1057,7 @@ int Chess::Perft(const int depth) {
             }
         }
     }
-    return numNodes;    
+    return numNodes;
 }
 
 // This function does the following:
@@ -1023,7 +1116,8 @@ Chess *Chess::UpgradePawn(const short start, const short end, const Piece::Type 
     return nextMoveGame;
 }
 
-std::vector<Chess *> Chess::PseudolegalMoves() {
+std::vector<Chess *> Chess::PseudolegalMoves()
+{
     // PseudoLegalMoves
     // See if move is actually legal
     std::vector<Chess *> pseudoLegalMoves;

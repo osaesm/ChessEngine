@@ -32,7 +32,8 @@ int main()
     //     nextLayer.clear();
     // }
     // std::cout << previousLayer.size() << std::endl;
-    std::cout << currGame->Perft(6) << std::endl;
-    // free(currGame);
+    std::cout << currGame->Perft(5) << std::endl;
+    currGame->ClearPieces();
+    delete currGame;
     return 0;
 }
