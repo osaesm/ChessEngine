@@ -61,7 +61,6 @@ int testTwo(const int nodesLen)
 int testThree(const int nodesLen)
 {
   Chess *currGame = new Chess("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 0");
-  long expectedNodes[nodesLen] = {1, 14, 191, 2812, 43238, 674624, 11030083, 178633661, 3009794393};
   PerftResults expectedResults[nodesLen] = {
     PerftResults(1, 0, 0, 0, 0, 0),
     PerftResults(14, 1, 0, 0, 0, 2),
@@ -89,45 +88,33 @@ int testThree(const int nodesLen)
   return nodesLen;
 }
 
-// int testFour(const int nodesLen)
-// {
-//   Chess *currGame = new Chess("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
-//   long expectedNodes[nodesLen] = {1, 6, 264, 9467, 422333, 15833292, 706045033};
-//   for (auto x = 0; x < nodesLen; ++x)
-//   {
-//     int result = currGame->Perft(x);
-//     if (result != expectedNodes[x])
-//     {
-//       std::cout << "Failed Test Four" << std::endl
-//                 << "Expected:\t" << expectedNodes[x] << std::endl
-//                 << "Actual:\t\t" << result << std::endl;
-//       return x;
-//     }
-//   }
-//   currGame->ClearPieces();
-//   delete currGame;
-//   return nodesLen;
-// }
-
-// int testFive(const int nodesLen)
-// {
-//   Chess *currGame = new Chess("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  ");
-//   long expectedNodes[nodesLen] = {1, 44, 1486, 62379, 2103487, 89941194};
-//   for (auto x = 0; x < nodesLen; ++x)
-//   {
-//     int result = currGame->Perft(x);
-//     if (result != expectedNodes[x])
-//     {
-//       std::cout << "Failed Test Five" << std::endl
-//                 << "Expected:\t" << expectedNodes[x] << std::endl
-//                 << "Actual:\t\t" << result << std::endl;
-//       return x;
-//     }
-//   }
-//   currGame->ClearPieces();
-//   delete currGame;
-//   return nodesLen;
-// }
+int testFour(const int nodesLen)
+{
+  Chess *currGame = new Chess("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
+  PerftResults expectedResults[nodesLen] = {
+    PerftResults(1, 0, 0, 0, 0, 0),
+    PerftResults(6, 0, 0, 0, 0, 0),
+    PerftResults(264, 87, 0, 6, 48, 10),
+    PerftResults(9467, 1021, 4, 0, 120, 38),
+    PerftResults(422333, 131393, 0, 7795, 60032, 15492),
+    PerftResults(15833292, 2046173, 6512, 0, 329464, 200568),
+    PerftResults(706045033, 210369132, 212, 10882006, 81102984, 26973664),
+  };
+  for (auto x = 0; x < nodesLen; ++x)
+  {
+    PerftResults result = currGame->Perft(x);
+    if (result != expectedResults[x])
+    {
+      std::cout << "Failed Test Three" << std::endl
+                << "Expected:\t" << expectedResults[x].toString() << std::endl
+                << "Actual:\t\t" << result.toString() << std::endl;
+      return x;
+    }
+  }
+  currGame->ClearPieces();
+  delete currGame;
+  return nodesLen;
+}
 
 int main()
 {
@@ -158,26 +145,17 @@ int main()
   {
     std::cout << "Passed Test Three!" << std::endl;
   }
-  // int resultsFour = testFour(7);
-  // if (resultsFour < 7)
-  // {
-  //   std::cout << "Failed Test Four: " << resultsFour << "/" << 7 << std::endl;
-  // }
-  // else
-  // {
-  //   std::cout << "Passed Test Four!" << std::endl;
-  // }
-  // int resultsFive = testFive(6);
-  // if (resultsFour < 6)
-  // {
-  //   std::cout << "Failed Test Five: " << resultsFive << "/" << 6 << std::endl;
-  // }
-  // else
-  // {
-  //   std::cout << "Passed Test Five!" << std::endl;
-  // }
-  // int actualScore = resultsOne + resultsTwo + resultsThree + resultsFour + resultsFive;
-  // int expectedScore = 7 + 7 + 9 + 7 + 6;
-  // std::cout << "Overall Score: " << actualScore << "/" << expectedScore << std::endl;
+  int resultsFour = testFour(7);
+  if (resultsFour < 7)
+  {
+    std::cout << "Failed Test Four: " << resultsFour << "/" << 7 << std::endl;
+  }
+  else
+  {
+    std::cout << "Passed Test Four!" << std::endl;
+  }
+  int actualScore = resultsOne + resultsTwo + resultsThree + resultsFour;
+  int expectedScore = 7 + 7 + 9 + 7 ;
+  std::cout << "Overall Score: " << actualScore << "/" << expectedScore << std::endl;
   return 0;
 }

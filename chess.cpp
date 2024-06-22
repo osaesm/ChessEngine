@@ -185,7 +185,7 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
         }
         break;
       }
-      if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::BLACK && (this->pieces[newIdx]->type == Piece::Type::PAWN)))
+      else if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::BLACK && (this->pieces[newIdx]->type == Piece::Type::PAWN)))
       {
         return true;
       }
@@ -193,7 +193,7 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
     }
   }
   // -8
-  for (short x = 1, newIdx = kingIdx - 8; x <= startRow; ++x, newIdx -= 8)
+  for (short newIdx = kingIdx - 8; newIdx >= 0; newIdx -= 8)
   {
     if (this->pieces[newIdx])
     {
@@ -205,7 +205,7 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
         }
         break;
       }
-      if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN))
+      else if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN))
       {
         return true;
       }
@@ -225,7 +225,7 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
         }
         break;
       }
-      if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::BLACK && (this->pieces[newIdx]->type == Piece::Type::PAWN)))
+      else if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::BLACK && (this->pieces[newIdx]->type == Piece::Type::PAWN)))
       {
         return true;
       }
@@ -245,7 +245,7 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
         }
         break;
       }
-      if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN))
+      else if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN))
       {
         return true;
       }
@@ -265,7 +265,7 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
         }
         break;
       }
-      if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN))
+      else if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN))
       {
         return true;
       }
@@ -285,7 +285,7 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
         }
         break;
       }
-      if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::WHITE && (this->pieces[newIdx]->type == Piece::Type::PAWN)))
+      else if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::WHITE && (this->pieces[newIdx]->type == Piece::Type::PAWN)))
       {
         return true;
       }
@@ -293,7 +293,7 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
     }
   }
   // +8
-  for (short x = 1, newIdx = kingIdx + 8; x + startRow < 8; ++x, newIdx += 8)
+  for (short newIdx = kingIdx + 8; newIdx < 64; newIdx += 8)
   {
     if (this->pieces[newIdx])
     {
@@ -305,7 +305,7 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
         }
         break;
       }
-      if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN))
+      else if ((this->pieces[newIdx]->type == Piece::Type::ROOK) || (this->pieces[newIdx]->type == Piece::Type::QUEEN))
       {
         return true;
       }
@@ -325,7 +325,7 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
         }
         break;
       }
-      if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::WHITE && (this->pieces[newIdx]->type == Piece::Type::PAWN)))
+      else if ((this->pieces[newIdx]->type == Piece::Type::BISHOP) || (this->pieces[newIdx]->type == Piece::Type::QUEEN) || (x == 1 && kingColor == Piece::Color::WHITE && (this->pieces[newIdx]->type == Piece::Type::PAWN)))
       {
         return true;
       }
@@ -336,44 +336,44 @@ bool Chess::InCheck(const short kingIdx, const Piece::Color kingColor)
   // Knight checks
   if (startRow > 1)
   {
-    if (startCol > 0 && (this->pieces[kingIdx - 17] && (this->pieces[kingIdx - 17]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx - 17]->color != kingColor)))
+    if (startCol > 0 && (this->pieces[kingIdx - 17]) && (this->pieces[kingIdx - 17]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx - 17]->color != kingColor))
     {
       return true;
     }
-    if (startCol < 7 && (this->pieces[kingIdx - 15] && (this->pieces[kingIdx - 15]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx - 15]->color != kingColor)))
+    if (startCol < 7 && (this->pieces[kingIdx - 15]) && (this->pieces[kingIdx - 15]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx - 15]->color != kingColor))
     {
       return true;
     }
   }
   if (startRow > 0)
   {
-    if (startCol > 1 && (this->pieces[kingIdx - 10] && (this->pieces[kingIdx - 10]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx - 10]->color != kingColor)))
+    if (startCol > 1 && (this->pieces[kingIdx - 10]) && (this->pieces[kingIdx - 10]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx - 10]->color != kingColor))
     {
       return true;
     }
-    if (startCol < 6 && (this->pieces[kingIdx - 6] && (this->pieces[kingIdx - 6]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx - 6]->color != kingColor)))
+    if (startCol < 6 && (this->pieces[kingIdx - 6]) && (this->pieces[kingIdx - 6]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx - 6]->color != kingColor))
     {
       return true;
     }
   }
   if (startRow < 7)
   {
-    if (startCol > 1 && (this->pieces[kingIdx + 6] && (this->pieces[kingIdx + 6]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx + 6]->color != kingColor)))
+    if (startCol > 1 && (this->pieces[kingIdx + 6]) && (this->pieces[kingIdx + 6]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx + 6]->color != kingColor))
     {
       return true;
     }
-    if (startCol < 6 && (this->pieces[kingIdx + 10] && (this->pieces[kingIdx + 10]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx + 10]->color != kingColor)))
+    if (startCol < 6 && (this->pieces[kingIdx + 10]) && (this->pieces[kingIdx + 10]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx + 10]->color != kingColor))
     {
       return true;
     }
   }
   if (startRow < 6)
   {
-    if (startCol > 0 && (this->pieces[kingIdx + 15] && (this->pieces[kingIdx + 15]->type == Piece::Type::KNIGHT)) && (this->pieces[kingIdx + 15]->color != kingColor))
+    if (startCol > 0 && (this->pieces[kingIdx + 15]) && (this->pieces[kingIdx + 15]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx + 15]->color != kingColor))
     {
       return true;
     }
-    if (startCol < 7 && (this->pieces[kingIdx + 17] && (this->pieces[kingIdx + 17]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx + 17]->color != kingColor)))
+    if (startCol < 7 && (this->pieces[kingIdx + 17]) && (this->pieces[kingIdx + 17]->type == Piece::Type::KNIGHT) && (this->pieces[kingIdx + 17]->color != kingColor))
     {
       return true;
     }
@@ -474,9 +474,9 @@ PerftResults Chess::Perft(const int depth)
               // Normal take
               if (this->pieces[idx + 7] && (this->pieces[idx + 7]->color == Piece::Color::BLACK))
               {
-                // Does taking lead to promotion
                 if (row == 6)
                 {
+                  // Check if taking leads to promotion
                   for (auto option : promotions)
                   {
                     Chess *nextMoveGame = this->UpgradePawn(idx, idx + 7, option);
@@ -526,7 +526,6 @@ PerftResults Chess::Perft(const int depth)
               // Normal take
               if (this->pieces[idx + 9] && (this->pieces[idx + 9]->color == Piece::Color::BLACK))
               {
-                // Does taking lead to promotion
                 if (row == 6)
                 {
                   for (auto option : promotions)
@@ -1288,7 +1287,8 @@ PerftResults Chess::Perft(const int depth)
       fenString = nextMoveGame->BoardIdx();
       nextMoveGame->occurrences[fenString]++;
       PerftResults nextResults = nextMoveGame->Perft(depth - 1);
-      if (depth == 1) {
+      if (depth == 1)
+      {
         nextResults.castles = 1;
       }
       results += nextResults;
@@ -1306,7 +1306,8 @@ PerftResults Chess::Perft(const int depth)
       fenString = nextMoveGame->BoardIdx();
       nextMoveGame->occurrences[fenString]++;
       PerftResults nextResults = nextMoveGame->Perft(depth - 1);
-      if (depth == 1) {
+      if (depth == 1)
+      {
         nextResults.castles = 1;
       }
       results += nextResults;
@@ -1327,7 +1328,8 @@ PerftResults Chess::Perft(const int depth)
       fenString = nextMoveGame->BoardIdx();
       nextMoveGame->occurrences[fenString]++;
       PerftResults nextResults = nextMoveGame->Perft(depth - 1);
-      if (depth == 1) {
+      if (depth == 1)
+      {
         nextResults.castles = 1;
       }
       results += nextResults;
@@ -1345,7 +1347,8 @@ PerftResults Chess::Perft(const int depth)
       fenString = nextMoveGame->BoardIdx();
       nextMoveGame->occurrences[fenString]++;
       PerftResults nextResults = nextMoveGame->Perft(depth - 1);
-      if (depth == 1) {
+      if (depth == 1)
+      {
         nextResults.castles = 1;
       }
       results += nextResults;
@@ -1360,13 +1363,13 @@ PerftResults Chess::Perft(const int depth)
 // * Moves the piece from "start" to "end" in the copy
 // * Increments the lastPawnOrTake & fullTurns
 // * Sets en passant idx to -1 (if needed, set later)
-// * Can't deal with occurrences bc of castling & en passant
+// * Can't deal with all occurrences bc of castling & en passant
 Chess *Chess::MovePiece(const short start, const short end, const bool updateOccurrences)
 {
   Chess *nextMoveGame = new Chess(*this);
   nextMoveGame->pieces[start] = nullptr;
   nextMoveGame->pieces[end] = this->pieces[start];
-  if (this->pieces[start]->type == Piece::Type::PAWN || this->pieces[end])
+  if ((this->pieces[start]->type == Piece::Type::PAWN) || this->pieces[end])
   {
     nextMoveGame->lastPawnOrTake = 0;
   }
@@ -1377,7 +1380,7 @@ Chess *Chess::MovePiece(const short start, const short end, const bool updateOcc
   nextMoveGame->turn = (this->turn == Piece::Color::WHITE) ? Piece::Color::BLACK : Piece::Color::WHITE;
   if (this->turn == Piece::Color::BLACK)
   {
-    ++this->fullTurns;
+    ++nextMoveGame->fullTurns;
   }
   if (nextMoveGame->enPassantIdx != -1)
   {
@@ -1405,7 +1408,7 @@ Chess *Chess::UpgradePawn(const short start, const short end, const Piece::Type 
   nextMoveGame->turn = (this->turn == Piece::Color::WHITE) ? Piece::Color::BLACK : Piece::Color::WHITE;
   if (this->turn == Piece::Color::BLACK)
   {
-    ++this->fullTurns;
+    ++nextMoveGame->fullTurns;
   }
   nextMoveGame->occurrences[nextMoveGame->BoardIdx()]++;
   return nextMoveGame;
