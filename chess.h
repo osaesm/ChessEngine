@@ -59,7 +59,14 @@ struct PerftResults
             && promotions == x.promotions
             && checks == x.checks);
   }
-  std::string toString() {
+  std::string toString() const {
+    return std::format("{{\n\tnodes:\t\t{},\n\tcaptures:\t{},\n\tenPassants:\t{},\n\tcastles:\t{},\n\tpromotions:\t{},\n\tchecks: {}\n}}", 
+                        std::to_string(nodes),
+                        std::to_string(captures),
+                        std::to_string(enPassants),
+                        std::to_string(castles),
+                        std::to_string(promotions),
+                        std::to_string(checks));
   }
 };
 

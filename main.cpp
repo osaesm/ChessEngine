@@ -6,7 +6,7 @@
 int main()
 {
   Chess *currGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0");
-  std::cout << currGame->Perft(3) << std::endl;
+  std::cout << currGame->Perft(3).toString() << std::endl;
   currGame->ClearPieces();
   delete currGame;
   return 0;
