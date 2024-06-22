@@ -70,7 +70,7 @@ int testThree(const int nodesLen)
     PerftResults(674624, 52051, 1165, 0, 0, 52950),
     PerftResults(11030083, 940350, 33325, 0, 7552, 452473),
     PerftResults(178633661, 14519036, 294874, 0, 140024, 12797406),
-    PerftResults(3009794393, 267586558, 8009239, 6578076, 135626805),
+    PerftResults(3009794393, 267586558, 8009239, 0, 6578076, 135626805),
   };
   for (auto x = 0; x < nodesLen; ++x)
   {
@@ -105,7 +105,7 @@ int testFour(const int nodesLen)
     PerftResults result = currGame->Perft(x);
     if (result != expectedResults[x])
     {
-      std::cout << "Failed Test Three" << std::endl
+      std::cout << "Failed Test Four" << std::endl
                 << "Expected:\t" << expectedResults[x].toString() << std::endl
                 << "Actual:\t\t" << result.toString() << std::endl;
       return x;
