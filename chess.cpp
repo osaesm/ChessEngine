@@ -1284,6 +1284,7 @@ PerftResults Chess::Perft(const int depth)
         nextMoveGame->wQueenCastle = false;
       }
       nextMoveGame->pieces[5] = this->pieces[7];
+      nextMoveGame->pieces[7] = nullptr;
       fenString = nextMoveGame->BoardIdx();
       nextMoveGame->occurrences[fenString]++;
       PerftResults nextResults = nextMoveGame->Perft(depth - 1);
@@ -1303,6 +1304,7 @@ PerftResults Chess::Perft(const int depth)
         nextMoveGame->wCastle = false;
       }
       nextMoveGame->pieces[3] = this->pieces[0];
+      nextMoveGame->pieces[0] = nullptr;
       fenString = nextMoveGame->BoardIdx();
       nextMoveGame->occurrences[fenString]++;
       PerftResults nextResults = nextMoveGame->Perft(depth - 1);
@@ -1325,6 +1327,7 @@ PerftResults Chess::Perft(const int depth)
         nextMoveGame->bQueenCastle = false;
       }
       nextMoveGame->pieces[61] = this->pieces[63];
+      nextMoveGame->pieces[63] = nullptr;
       fenString = nextMoveGame->BoardIdx();
       nextMoveGame->occurrences[fenString]++;
       PerftResults nextResults = nextMoveGame->Perft(depth - 1);
@@ -1344,6 +1347,7 @@ PerftResults Chess::Perft(const int depth)
         nextMoveGame->bCastle = false;
       }
       nextMoveGame->pieces[59] = this->pieces[56];
+      nextMoveGame->pieces[56] = nullptr;
       fenString = nextMoveGame->BoardIdx();
       nextMoveGame->occurrences[fenString]++;
       PerftResults nextResults = nextMoveGame->Perft(depth - 1);

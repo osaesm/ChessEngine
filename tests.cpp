@@ -92,7 +92,7 @@ int testFour(const int nodesLen)
 {
   Chess *currGame = new Chess("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
   PerftResults expectedResults[nodesLen] = {
-    PerftResults(1, 0, 0, 0, 0, 0),
+    PerftResults(1, 0, 0, 0, 0, 1),
     PerftResults(6, 0, 0, 0, 0, 0),
     PerftResults(264, 87, 0, 6, 48, 10),
     PerftResults(9467, 1021, 4, 0, 120, 38),
