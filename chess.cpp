@@ -1381,6 +1381,17 @@ Chess *Chess::MovePiece(const short start, const short end, const bool updateOcc
   {
     ++nextMoveGame->lastPawnOrTake;
   }
+  if (this->pieces[end] && this->pieces[end]->type == Piece::Type::ROOK) {
+    if (this->wCastle && end == 7) {
+      nextMoveGame->wCastle = false;
+    } else if (this->wQueenCastle && end == 0) {
+      nextMoveGame->wQueenCastle = false;
+    } else if (this->bCastle && end == 63) {
+      nextMoveGame->bCastle = false;
+    } else if (this->bQueenCastle && end == 56) {
+      nextMoveGame->bQueenCastle = false;
+    }
+  }
   nextMoveGame->turn = (this->turn == Piece::Color::WHITE) ? Piece::Color::BLACK : Piece::Color::WHITE;
   if (this->turn == Piece::Color::BLACK)
   {
