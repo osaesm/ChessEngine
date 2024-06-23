@@ -399,7 +399,6 @@ PerftResults Chess::Perft(const int depth)
   // checks vs checkmates (check if game is over in general)
   if (depth == 0)
   {
-    // std::cout << this->ConvertToFEN() << std::endl;
     results.nodes = 1;
     for (auto x = 0; x < 64; ++x)
     {
@@ -1359,9 +1358,6 @@ PerftResults Chess::Perft(const int depth)
       delete nextMoveGame;
     }
   }
-  // if (results.castles > 2886) {
-  //   std::cout << this->ConvertToFEN() << std::endl;
-  // }
   return results;
 }
 
@@ -1427,6 +1423,17 @@ Chess *Chess::UpgradePawn(const short start, const short end, const Piece::Type 
   if (this->turn == Piece::Color::BLACK)
   {
     ++nextMoveGame->fullTurns;
+  }
+  if (this->pieces[end] && this->pieces[end]->type == Piece::Type::ROOK) {
+    if (this->wCastle && end == 7) {
+      nextMoveGame->wCastle = false;
+    } else if (this->wQueenCastle && end == 0) {
+      nextMoveGame->wQueenCastle = false;
+    } else if (this->bCastle && end == 63) {
+      nextMoveGame->bCastle = false;
+    } else if (this->bQueenCastle && end == 56) {
+      nextMoveGame->bQueenCastle = false;
+    }
   }
   nextMoveGame->occurrences[nextMoveGame->BoardIdx()]++;
   return nextMoveGame;
