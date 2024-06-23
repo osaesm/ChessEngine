@@ -1288,7 +1288,7 @@ PerftResults Chess::Perft(const int depth)
       fenString = nextMoveGame->BoardIdx();
       nextMoveGame->occurrences[fenString]++;
       PerftResults nextResults = nextMoveGame->Perft(depth - 1);
-      if (depth == 1)
+      if (depth == 1 && nextResults.nodes == 1L)
       {
         nextResults.castles = 1;
       }
@@ -1308,7 +1308,7 @@ PerftResults Chess::Perft(const int depth)
       fenString = nextMoveGame->BoardIdx();
       nextMoveGame->occurrences[fenString]++;
       PerftResults nextResults = nextMoveGame->Perft(depth - 1);
-      if (depth == 1)
+      if (depth == 1 && nextResults.nodes == 1L)
       {
         nextResults.castles = 1;
       }
@@ -1331,7 +1331,7 @@ PerftResults Chess::Perft(const int depth)
       fenString = nextMoveGame->BoardIdx();
       nextMoveGame->occurrences[fenString]++;
       PerftResults nextResults = nextMoveGame->Perft(depth - 1);
-      if (depth == 1)
+      if (depth == 1 && nextResults.nodes == 1L)
       {
         nextResults.castles = 1;
       }
@@ -1351,7 +1351,7 @@ PerftResults Chess::Perft(const int depth)
       fenString = nextMoveGame->BoardIdx();
       nextMoveGame->occurrences[fenString]++;
       PerftResults nextResults = nextMoveGame->Perft(depth - 1);
-      if (depth == 1)
+      if (depth == 1 && nextResults.nodes == 1L)
       {
         nextResults.castles = 1;
       }
@@ -1359,6 +1359,9 @@ PerftResults Chess::Perft(const int depth)
       delete nextMoveGame;
     }
   }
+  // if (results.castles > 2886) {
+  //   std::cout << this->ConvertToFEN() << std::endl;
+  // }
   return results;
 }
 
