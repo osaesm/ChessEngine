@@ -2,6 +2,7 @@
 
 uint64_t ROOK_MOVES[64][4096];
 uint64_t BISHOP_MOVES[64][4096];
+uint64_t QUEEN_MOVES[64][4096 * 4096];
 
 int main()
 {
@@ -19,7 +20,6 @@ int main()
             for (int down = 0; down <= row; ++down)
             {
               int hash = (left << 9) + (up << 6) + (right << 3) + down;
-              ROOK_MOVES[idx][hash] = 0;
               for (auto x = idx - (down * 8); x < idx; x += 8)
               {
                 ROOK_MOVES[idx][hash] |= (1ULL << x);
@@ -35,6 +35,52 @@ int main()
               for (auto x = idx + (up * 8); x > idx; x -= 8)
               {
                 ROOK_MOVES[idx][hash] |= (1ULL << x);
+              }
+              for (int upLeft = 0; upLeft <= col && (upLeft + row) < 8; ++upLeft)
+              {
+                for (int upRight = 0; (upRight + col) < 8 && (upRight + row) < 8; ++upRight)
+                {
+                  for (int downRight = 0; (downRight + col) < 8 && downRight <= row; ++downRight)
+                  {
+                    for (int downLeft = 0; downLeft <= col && downLeft <= row; ++downLeft)
+                    {
+                      int queenHash = (left << 21) + (upLeft << 18) + (up << 15) + (upRight << 12) + (right << 9) + (downRight << 6) + (down << 3) + downRight;
+                      QUEEN_MOVES[idx][queenHash] = 0;
+                      for (auto x = idx - (down * 8); x < idx; x += 8)
+                      {
+                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                      }
+                      for (auto x = idx - left; x < idx; ++x)
+                      {
+                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                      }
+                      for (auto x = idx + right; x > idx; --x)
+                      {
+                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                      }
+                      for (auto x = idx + (up * 8); x > idx; x -= 8)
+                      {
+                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                      }
+                        for (auto x = idx - (downRight * 7); x < idx; x += 7)
+                      {
+                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                      }
+                      for (auto x = idx - (downLeft * 9); x < idx; x += 9)
+                      {
+                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                      }
+                      for (auto x = idx + (upLeft * 7); x > idx; x -= 7)
+                      {
+                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                      }
+                      for (auto x = idx + (upRight * 9); x > idx; x -= 9)
+                      {
+                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                      }
+                    }
+                  }
+                }
               }
             }
           }
