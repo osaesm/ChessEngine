@@ -1,100 +1,39 @@
 #ifndef CHESS_H
 #define CHESS_H
 
-#include <format>
+#include <cstdint>
 #include <string>
-#include <unordered_map>
-#include <vector>
 
+constexpr uint64_t FILE_A = 0x8080808080808080;
+constexpr uint64_t FILE_B = 0x4040404040404040;
+constexpr uint64_t FILE_C = 0x2020202020202020;
+constexpr uint64_t FILE_D = 0x1010101010101010;
+constexpr uint64_t FILE_E = 0x0808080808080808;
+constexpr uint64_t FILE_F = 0x0404040404040404;
+constexpr uint64_t FILE_G = 0x0202020202020202;
+constexpr uint64_t FILE_H = 0x0101010101010101;
 
-class Piece
-{
-public:
-  enum Color : bool
-  {
-    WHITE = true,
-    BLACK = false
-  } color;
-  enum Type
-  {
-    PAWN,
-    KNIGHT,
-    BISHOP,
-    ROOK,
-    QUEEN,
-    KING
-  } type;
-};
+constexpr uint64_t RANK_1 = 0xFF00000000000000;
+constexpr uint64_t RANK_2 = 0x00FF000000000000;
+constexpr uint64_t RANK_3 = 0x0000FF0000000000;
+constexpr uint64_t RANK_4 = 0x000000FF00000000;
+constexpr uint64_t RANK_5 = 0x00000000FF000000;
+constexpr uint64_t RANK_6 = 0x0000000000FF0000;
+constexpr uint64_t RANK_7 = 0x000000000000FF00;
+constexpr uint64_t RANK_8 = 0x00000000000000FF;
 
-struct PerftResults
-{
-  long nodes;
-  long captures;
-  long enPassants;
-  long castles;
-  long promotions;
-  long checks;
+constexpr uint64_t up(uint64_t board) { return (board & ~RANK_8) >> 8; }
+constexpr uint64_t down(uint64_t board) { return (board & ~RANK_1) << 8; }
+constexpr uint64_t left(uint64_t board) { return (board & ~FILE_A) << 1; }
+constexpr uint64_t right(uint64_t board) { return (board & ~FILE_H) >> 1; }
 
-  PerftResults(long nodes = 0, long captures = 0, long enPassants = 0, long castles = 0, long promotions = 0, long checks = 0)
-      : nodes(nodes), captures(captures), enPassants(enPassants), castles(castles), promotions(promotions), checks(checks)
-  {
-  }
-  PerftResults operator+(const PerftResults &x) const
-  {
-    return PerftResults(nodes + x.nodes, captures + x.captures, enPassants + x.enPassants, castles + x.castles, promotions + x.promotions, checks + x.checks);
-  }
-  void operator+=(const PerftResults &x) {
-    this->nodes += x.nodes;
-    this->captures += x.captures;
-    this->enPassants += x.enPassants;
-    this->castles += x.castles;
-    this->promotions += x.promotions;
-    this->checks += x.checks;
-  }
-  bool operator==(const PerftResults &x) const {
-    return (nodes == x.nodes
-            && captures == x.captures
-            && enPassants == x.enPassants
-            && castles == x.castles
-            && promotions == x.promotions
-            && checks == x.checks);
-  }
-  std::string toString() const {
-    return std::format("{{\n\tnodes:\t\t\t{},\n\tcaptures:\t\t{},\n\tenPassants:\t{},\n\tcastles:\t\t{},\n\tpromotions:\t{},\n\tchecks:\t\t{}\n}}", 
-                        nodes,
-                        captures,
-                        enPassants,
-                        castles,
-                        promotions,
-                        checks);
-  }
-};
+constexpr uint64_t upleft(uint64_t board) { return (board & ~RANK_8 & ~FILE_A) >> 7; }
+constexpr uint64_t upright(uint64_t board) { return (board & ~RANK_8 & ~FILE_H) >> 9; }
+constexpr uint64_t downleft(uint64_t board) { return (board & ~RANK_1 & ~FILE_A) << 9; }
+constexpr uint64_t downright(uint64_t board) { return (board & ~RANK_1 & ~FILE_H) << 7; }
 
-class Chess
-{
-private:
-  Piece *pieces[64];
-  bool wCastle, wQueenCastle, bCastle, bQueenCastle;
-  Piece::Color turn;
-  short enPassantIdx;
-  short lastPawnOrTake;
-  int fullTurns;
-  std::unordered_map<std::string, short> occurrences;
+class Chess {
 
-  Chess *MovePiece(const short start, const short end, const bool updateOccurrences);
-  Chess *UpgradePawn(const short start, const short end, const Piece::Type option);
-
-public:
-  Chess(const std::string &fenString);
-  Chess(const Chess &originalGame);
-  std::string BoardIdx();
-  std::string ConvertToFEN();
-  bool InCheck(const short kingIdx, const Piece::Color kingColor);
-  PerftResults Perft(const int depth);
-  std::vector<Chess *> PseudolegalMoves();
-  std::vector<Chess *> LegalMoves();
-  void PrintBoard();
-  void ClearPieces();
 };
 
 #endif
