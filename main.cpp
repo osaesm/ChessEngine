@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "unordered_dense.h"
+#include "extern/unordered_dense/include/ankerl/unordered_dense.h"
 #include "chess.h"
 
 ankerl::unordered_dense::map<int, uint64_t> ROOK_MOVES[64];
@@ -122,10 +122,16 @@ int main()
       }
     }
   }
-
-  std::cout << ROOK_MOVES[0].size() << std::endl;
-  std::cout << BISHOP_MOVES[0].size() << std::endl;
-  std::cout << QUEEN_MOVES[0].size() << std::endl;
-
+  int totalRookBoards = 0;
+  int totalBishopBoards = 0;
+  int totalQueenBoards = 0;
+  for (int i = 0; i < 64; ++i) {
+    totalRookBoards += ROOK_MOVES[i].size();
+    totalBishopBoards += BISHOP_MOVES[i].size();
+    totalQueenBoards += QUEEN_MOVES[i].size();
+  }
+  std::cout << totalRookBoards << std::endl;
+  std::cout << totalBishopBoards << std::endl;
+  std::cout << totalQueenBoards << std::endl;
   return 0;
 }
