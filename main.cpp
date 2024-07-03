@@ -1,8 +1,11 @@
+#include <iostream>
+
+#include "unordered_dense.h"
 #include "chess.h"
 
-uint64_t ROOK_MOVES[64][4096];
-uint64_t BISHOP_MOVES[64][4096];
-uint64_t QUEEN_MOVES[64][4096 * 4096];
+ankerl::unordered_dense::map<int, uint64_t> ROOK_MOVES[64];
+ankerl::unordered_dense::map<int, uint64_t> BISHOP_MOVES[64];
+ankerl::unordered_dense::map<int, uint64_t> QUEEN_MOVES[64];
 
 int main()
 {
@@ -20,6 +23,7 @@ int main()
             for (int down = 0; down <= row; ++down)
             {
               int hash = (left << 9) + (up << 6) + (right << 3) + down;
+              ROOK_MOVES[idx][hash] = 0;
               for (auto x = idx - (down * 8); x < idx; x += 8)
               {
                 ROOK_MOVES[idx][hash] |= (1ULL << x);
@@ -118,5 +122,10 @@ int main()
       }
     }
   }
+
+  std::cout << ROOK_MOVES[0].size() << std::endl;
+  std::cout << BISHOP_MOVES[0].size() << std::endl;
+  std::cout << QUEEN_MOVES[0].size() << std::endl;
+
   return 0;
 }

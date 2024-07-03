@@ -1,4 +1,4 @@
-[submodule "abseil-cpp"]
-	path = abseil-cpp
-	url = https://github.com/abseil/abseil-cpp.git
-	tag = 20240116.2
+[submodule "unordered_dense"]
+	path = unordered_dense
+	url = https://github.com/martinus/unordered_dense.git
+	tag = v4.4.0
