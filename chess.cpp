@@ -109,7 +109,8 @@ Chess::Chess(const std::string &fenString)
     this->bQueenCastle = true;
     ++idx;
   }
-  if (!this->wCastle && !this->wQueenCastle && !this->bCastle && !this->bQueenCastle) ++idx;
+  if (!this->wCastle && !this->wQueenCastle && !this->bCastle && !this->bQueenCastle)
+    ++idx;
   // Fourth Part
   ++idx;
   this->enPassantIdx = -1;
@@ -298,7 +299,8 @@ std::string Chess::BoardIdx()
     boardHash += "k";
   if (this->bQueenCastle)
     boardHash += "q";
-  if (!this->wCastle && !this->wQueenCastle && !this->bCastle && !this->bQueenCastle) boardHash += "-";
+  if (!this->wCastle && !this->wQueenCastle && !this->bCastle && !this->bQueenCastle)
+    boardHash += "-";
 
   // Fourth Part
   if (this->enPassantIdx == -1)
@@ -313,7 +315,7 @@ std::string Chess::BoardIdx()
       boardHash += " a" + std::to_string((this->enPassantIdx / 8) + 1);
       break;
     case 1:
-      boardHash +=  "b" + std::to_string((this->enPassantIdx / 8) + 1);
+      boardHash += "b" + std::to_string((this->enPassantIdx / 8) + 1);
       break;
     case 2:
       boardHash += " c" + std::to_string((this->enPassantIdx / 8) + 1);
@@ -344,21 +346,36 @@ std::string Chess::ConvertToFEN()
   return this->BoardIdx() + " " + std::to_string(this->lastPawnOrTake) + " " + std::to_string(this->fullTurns);
 }
 
-bool Chess::InCheck() {
+bool Chess::InCheck()
+{
   return true;
 }
 
-std::vector<Chess *> Chess::LegalMoves() {
-  std::vector<Chess *> legalMoves; 
-  for (auto const & game : this->PseudoLegalMoves()) {
-    if (!game->InCheck()) {
+std::vector<Chess *> Chess::LegalMoves()
+{
+  std::vector<Chess *> legalMoves;
+  for (auto const &game : this->PseudoLegalMoves())
+  {
+    if (!game->InCheck())
+    {
       legalMoves.push_back(game);
     }
   }
   return legalMoves;
 }
 
-std::vector<Chess *> Chess::PseudoLegalMoves() {
+std::vector<Chess *> Chess::PseudoLegalMoves()
+{
   std::vector<Chess *> pseudolegalMoves;
   return pseudolegalMoves;
+}
+
+uint64_t Chess::perft(int depth)
+{
+  return 0ULL;
+}
+
+void Chess::divide(int depth)
+{
+  return;
 }

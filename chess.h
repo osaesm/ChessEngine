@@ -12,7 +12,8 @@
 #define clear_bit(b, i) ((b) &= ~(1ULL << i))
 #define get_lsb(b) (__builtin_ctzll(b))
 
-inline int pop_lsb(uint64_t &b) {
+inline int pop_lsb(uint64_t &b)
+{
   int i = get_lsb(b);
   b &= (b - 1);
   return i;
@@ -163,26 +164,30 @@ static ankerl::unordered_dense::map<int, uint64_t> QUEEN_MOVES[64];
 
 class Chess
 {
-  protected:
-    uint64_t wPawns, bPawns, wKnights, bKnights, wBishops, bBishops, wRooks, bRooks, wQueens, bQueens, wKing, bKing;
-    enum Color {
-      WHITE,
-      BLACK
-    } turn;
-    bool wCastle, wQueenCastle, bCastle, bQueenCastle;
-    short enPassantIdx;
-    short lastPawnOrTake;
-    int fullTurns;
-    constexpr uint64_t whites() { return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing); };
-    constexpr uint64_t blacks() { return (bPawns | bKnights | bBishops | bRooks | bQueens | bKing); };
-  public:
-    Chess(const std::string & fenString);
-    Chess(const Chess & x);
-    std::string BoardIdx();
-    std::string ConvertToFEN();
-    std::vector<Chess *> LegalMoves();
-    std::vector<Chess *> PseudoLegalMoves();
-    bool InCheck();
+protected:
+  uint64_t wPawns, bPawns, wKnights, bKnights, wBishops, bBishops, wRooks, bRooks, wQueens, bQueens, wKing, bKing;
+  enum Color
+  {
+    WHITE,
+    BLACK
+  } turn;
+  bool wCastle, wQueenCastle, bCastle, bQueenCastle;
+  short enPassantIdx;
+  short lastPawnOrTake;
+  int fullTurns;
+  constexpr uint64_t whites() { return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing); };
+  constexpr uint64_t blacks() { return (bPawns | bKnights | bBishops | bRooks | bQueens | bKing); };
+
+public:
+  Chess(const std::string &fenString);
+  Chess(const Chess &x);
+  std::string BoardIdx();
+  std::string ConvertToFEN();
+  std::vector<Chess *> LegalMoves();
+  std::vector<Chess *> PseudoLegalMoves();
+  bool InCheck();
+  uint64_t perft(int depth);
+  void divide(int depth);
 };
 
 #endif
