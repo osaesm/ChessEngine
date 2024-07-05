@@ -1,11 +1,6 @@
 #include <iostream>
 
-#include "extern/unordered_dense/include/ankerl/unordered_dense.h"
 #include "chess.h"
-
-ankerl::unordered_dense::map<int, uint64_t> ROOK_MOVES[64];
-ankerl::unordered_dense::map<int, uint64_t> BISHOP_MOVES[64];
-ankerl::unordered_dense::map<int, uint64_t> QUEEN_MOVES[64];
 
 int main()
 {
@@ -26,19 +21,19 @@ int main()
               ROOK_MOVES[idx][hash] = 0;
               for (auto x = idx - (down * 8); x < idx; x += 8)
               {
-                ROOK_MOVES[idx][hash] |= (1ULL << x);
+                set_bit(ROOK_MOVES[idx][hash], x);
               }
               for (auto x = idx - left; x < idx; ++x)
               {
-                ROOK_MOVES[idx][hash] |= (1ULL << x);
+                set_bit(ROOK_MOVES[idx][hash], x);
               }
               for (auto x = idx + right; x > idx; --x)
               {
-                ROOK_MOVES[idx][hash] |= (1ULL << x);
+                set_bit(ROOK_MOVES[idx][hash], x);
               }
               for (auto x = idx + (up * 8); x > idx; x -= 8)
               {
-                ROOK_MOVES[idx][hash] |= (1ULL << x);
+                set_bit(ROOK_MOVES[idx][hash], x);
               }
               for (int upLeft = 0; upLeft <= col && (upLeft + row) < 8; ++upLeft)
               {
@@ -52,35 +47,35 @@ int main()
                       QUEEN_MOVES[idx][queenHash] = 0;
                       for (auto x = idx - (down * 8); x < idx; x += 8)
                       {
-                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                        set_bit(QUEEN_MOVES[idx][queenHash], x);
                       }
                       for (auto x = idx - left; x < idx; ++x)
                       {
-                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                        set_bit(QUEEN_MOVES[idx][queenHash], x);
                       }
                       for (auto x = idx + right; x > idx; --x)
                       {
-                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                        set_bit(QUEEN_MOVES[idx][queenHash], x);
                       }
                       for (auto x = idx + (up * 8); x > idx; x -= 8)
                       {
-                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                        set_bit(QUEEN_MOVES[idx][queenHash], x);
                       }
                         for (auto x = idx - (downRight * 7); x < idx; x += 7)
                       {
-                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                        set_bit(QUEEN_MOVES[idx][queenHash], x);
                       }
                       for (auto x = idx - (downLeft * 9); x < idx; x += 9)
                       {
-                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                        set_bit(QUEEN_MOVES[idx][queenHash], x);
                       }
                       for (auto x = idx + (upLeft * 7); x > idx; x -= 7)
                       {
-                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                        set_bit(QUEEN_MOVES[idx][queenHash], x);
                       }
                       for (auto x = idx + (upRight * 9); x > idx; x -= 9)
                       {
-                        QUEEN_MOVES[idx][hash] |= (1ULL << x);
+                        set_bit(QUEEN_MOVES[idx][queenHash], x);
                       }
                     }
                   }
@@ -102,19 +97,19 @@ int main()
               BISHOP_MOVES[idx][hash] = 0;
               for (auto x = idx - (downRight * 7); x < idx; x += 7)
               {
-                BISHOP_MOVES[idx][hash] |= (1ULL << x);
+                set_bit(BISHOP_MOVES[idx][hash], x);
               }
               for (auto x = idx - (downLeft * 9); x < idx; x += 9)
               {
-                BISHOP_MOVES[idx][hash] |= (1ULL << x);
+                set_bit(BISHOP_MOVES[idx][hash], x);
               }
               for (auto x = idx + (upLeft * 7); x > idx; x -= 7)
               {
-                BISHOP_MOVES[idx][hash] |= (1ULL << x);
+                set_bit(BISHOP_MOVES[idx][hash], x);
               }
               for (auto x = idx + (upRight * 9); x > idx; x -= 9)
               {
-                BISHOP_MOVES[idx][hash] |= (1ULL << x);
+                set_bit(BISHOP_MOVES[idx][hash], x);
               }
             }
           }
@@ -133,5 +128,9 @@ int main()
   std::cout << totalRookBoards << std::endl;
   std::cout << totalBishopBoards << std::endl;
   std::cout << totalQueenBoards << std::endl;
+
+  Chess * game = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0");
+  std::cout << game->ConvertToFEN() << std::endl;
+  delete game;
   return 0;
 }
