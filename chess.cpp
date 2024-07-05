@@ -109,7 +109,7 @@ Chess::Chess(const std::string &fenString)
     this->bQueenCastle = true;
     ++idx;
   }
-
+  if (!this->wCastle && !this->wQueenCastle && !this->bCastle && !this->bQueenCastle) ++idx;
   // Fourth Part
   ++idx;
   this->enPassantIdx = -1;
@@ -298,6 +298,7 @@ std::string Chess::BoardIdx()
     boardHash += "k";
   if (this->bQueenCastle)
     boardHash += "q";
+  if (!this->wCastle && !this->wQueenCastle && !this->bCastle && !this->bQueenCastle) boardHash += "-";
 
   // Fourth Part
   if (this->enPassantIdx == -1)
@@ -309,28 +310,28 @@ std::string Chess::BoardIdx()
     switch (this->enPassantIdx % 8)
     {
     case 0:
-      boardHash += "a" + std::to_string((this->enPassantIdx / 8) + 1);
+      boardHash += " a" + std::to_string((this->enPassantIdx / 8) + 1);
       break;
     case 1:
-      boardHash += "b" + std::to_string((this->enPassantIdx / 8) + 1);
+      boardHash +=  "b" + std::to_string((this->enPassantIdx / 8) + 1);
       break;
     case 2:
-      boardHash += "c" + std::to_string((this->enPassantIdx / 8) + 1);
+      boardHash += " c" + std::to_string((this->enPassantIdx / 8) + 1);
       break;
     case 3:
-      boardHash += "d" + std::to_string((this->enPassantIdx / 8) + 1);
+      boardHash += " d" + std::to_string((this->enPassantIdx / 8) + 1);
       break;
     case 4:
-      boardHash += "e" + std::to_string((this->enPassantIdx / 8) + 1);
+      boardHash += " e" + std::to_string((this->enPassantIdx / 8) + 1);
       break;
     case 5:
-      boardHash += "f" + std::to_string((this->enPassantIdx / 8) + 1);
+      boardHash += " f" + std::to_string((this->enPassantIdx / 8) + 1);
       break;
     case 6:
-      boardHash += "g" + std::to_string((this->enPassantIdx / 8) + 1);
+      boardHash += " g" + std::to_string((this->enPassantIdx / 8) + 1);
       break;
     default:
-      boardHash += "h" + std::to_string((this->enPassantIdx / 8) + 1);
+      boardHash += " h" + std::to_string((this->enPassantIdx / 8) + 1);
       break;
     }
   }
