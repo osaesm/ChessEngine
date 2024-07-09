@@ -28,14 +28,14 @@ constexpr uint64_t FILE_C = 0x0404040404040404;
 constexpr uint64_t FILE_B = 0x0202020202020202;
 constexpr uint64_t FILE_A = 0x0101010101010101;
 
-constexpr uint64_t RANK_1 = 0xFF00000000000000;
-constexpr uint64_t RANK_2 = 0x00FF000000000000;
-constexpr uint64_t RANK_3 = 0x0000FF0000000000;
-constexpr uint64_t RANK_4 = 0x000000FF00000000;
-constexpr uint64_t RANK_5 = 0x00000000FF000000;
-constexpr uint64_t RANK_6 = 0x0000000000FF0000;
-constexpr uint64_t RANK_7 = 0x000000000000FF00;
-constexpr uint64_t RANK_8 = 0x00000000000000FF;
+constexpr uint64_t RANK_8 = 0xFF00000000000000;
+constexpr uint64_t RANK_7 = 0x00FF000000000000;
+constexpr uint64_t RANK_6 = 0x0000FF0000000000;
+constexpr uint64_t RANK_5 = 0x000000FF00000000;
+constexpr uint64_t RANK_4 = 0x00000000FF000000;
+constexpr uint64_t RANK_3 = 0x0000000000FF0000;
+constexpr uint64_t RANK_2 = 0x000000000000FF00;
+constexpr uint64_t RANK_1 = 0x00000000000000FF;
 
 constexpr uint64_t up(uint64_t board) { return (board & ~RANK_8) << 8; }
 constexpr uint64_t down(uint64_t board) { return (board & ~RANK_1) >> 8; }

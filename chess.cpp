@@ -1,5 +1,6 @@
 #include "chess.h"
 #include <iostream>
+#include <bitset>
 
 uint64_t Chess::KNIGHT_MOVES[64] = {};
 uint64_t Chess::KING_MOVES[64] = {};
@@ -125,11 +126,10 @@ void Chess::Initialize()
     }
   }
   // Initialize knight and king moves
-  for (int i = 0, idx = 1; i < 64; ++i, idx <<= 1)
+  for (uint64_t i = 0, idx = 1; i < 64; ++i, idx <<= 1)
   {
     KNIGHT_MOVES[i] = 0;
     KNIGHT_MOVES[i] = down(downleft(idx)) | down(downright(idx)) | left(downleft(idx)) | right(downright(idx)) | up(upleft(idx)) | up(upright(idx)) | left(upleft(idx)) | right(upright(idx));
-    // std::cout << i << " " << upright(idx) << std::endl;
     KING_MOVES[i] = 0;
     KING_MOVES[i] = downleft(idx) | down(idx) | downright(idx) | left(idx) | right(idx) | upleft(idx) | up(idx) | upright(idx);
   }
@@ -707,7 +707,7 @@ uint64_t Chess::perft(int depth)
     {
       // Grabbing current piece
       currIdx = pop_lsb(gameCopy.wKnights);
-      uint64_t possibleMoves = this->KNIGHT_MOVES[currIdx];
+      uint64_t possibleMoves = this->KNIGHT_MOVES[currIdx] & targets;
       while (possibleMoves)
       {
         // Next possible move
@@ -725,7 +725,7 @@ uint64_t Chess::perft(int depth)
       currIdx = pop_lsb(gameCopy.wBishops);
       // All the possible moves based on the hash
       // (Use targets in the hash instead of blockers??)
-      uint64_t possibleMoves = this->BISHOP_MOVES[currIdx][BishopHash(currIdx, this->whites())];
+      uint64_t possibleMoves = this->BISHOP_MOVES[currIdx][BishopHash(currIdx, this->whites())] & targets;
       while (possibleMoves)
       {
         // Next possible move
@@ -743,7 +743,7 @@ uint64_t Chess::perft(int depth)
       currIdx = pop_lsb(gameCopy.wRooks);
       // All the possible moves based on the hash
       // (Use targets in the hash instead of blockers??)
-      uint64_t possibleMoves = this->ROOK_MOVES[currIdx][RookHash(currIdx, this->whites())];
+      uint64_t possibleMoves = this->ROOK_MOVES[currIdx][RookHash(currIdx, this->whites())] & targets;
       while (possibleMoves)
       {
         // Next possible move
@@ -769,7 +769,7 @@ uint64_t Chess::perft(int depth)
       currIdx = pop_lsb(gameCopy.wQueens);
       // All the possible moves based on the hash
       // (Use targets in the hash instead of blockers??)
-      uint64_t possibleMoves = this->QUEEN_MOVES[currIdx][QueenHash(currIdx, this->whites())];
+      uint64_t possibleMoves = this->QUEEN_MOVES[currIdx][QueenHash(currIdx, this->whites())] & targets;
       while (possibleMoves)
       {
         // Next possible move
@@ -782,32 +782,28 @@ uint64_t Chess::perft(int depth)
     }
     // White King
     currIdx = pop_lsb(gameCopy.wKing);
-    // All the possible moves based on the hash
-    // (Use targets in the hash instead of blockers??)
-    uint64_t possibleMoves = this->KING_MOVES[currIdx];
+    uint64_t possibleMoves = this->KING_MOVES[currIdx] & targets;
     while (possibleMoves)
     {
       // Next possible move
       int nextIdx = pop_lsb(possibleMoves);
       // Initialize next move game
-      if ((1ULL << nextIdx) & targets)
+      Chess nextMoveGame(*this);
+      if (nextMoveGame.wQueenCastle)
       {
-        Chess nextMoveGame(*this);
-        if (nextMoveGame.wQueenCastle)
-        {
-          nextMoveGame.wQueenCastle = false;
-        }
-        if (nextMoveGame.wCastle)
-        {
-          nextMoveGame.wCastle = false;
-        }
-        nextMoveGame.MovePiece('K', currIdx, nextIdx, opponent);
-        nodes += nextMoveGame.perft(depth - 1);
+        nextMoveGame.wQueenCastle = false;
       }
+      if (nextMoveGame.wCastle)
+      {
+        nextMoveGame.wCastle = false;
+      }
+      nextMoveGame.MovePiece('K', currIdx, nextIdx, opponent);
+      nodes += nextMoveGame.perft(depth - 1);
     }
 
     // White Castles
-    if (gameCopy.wQueenCastle)
+    // 0xEULL is 1110 aka idx 1,2,3
+    if (gameCopy.wQueenCastle && (targets & ~opponent & 0xEULL) && !this->InCheck(Color::WHITE, 4) && !this->InCheck(Color::WHITE, 3) && !this->InCheck(Color::WHITE, 2))
     {
       Chess nextMoveGame(*this);
       nextMoveGame.MovePiece('K', 4, 2, opponent);
@@ -817,7 +813,8 @@ uint64_t Chess::perft(int depth)
       set_bit(nextMoveGame.wRooks, 3);
       nodes += nextMoveGame.perft(depth - 1);
     }
-    if (gameCopy.wCastle)
+    // 0x60ULL is 01100000 aka idx 5,6
+    if (gameCopy.wCastle && (targets & ~opponent & 0x60ULL) && !this->InCheck(Color::WHITE, 4) && !this->InCheck(Color::WHITE, 5) && !this->InCheck(Color::WHITE, 6))
     {
       Chess nextMoveGame(*this);
       nextMoveGame.MovePiece('K', 4, 6, opponent);
@@ -838,7 +835,6 @@ uint64_t Chess::perft(int depth)
     {
       // Grabbing current piece
       currIdx = pop_lsb(gameCopy.bPawns);
-      // std::cout << currIdx << std::endl;
       if (down(1ULL << currIdx) & targets & ~opponent)
       {
         Chess nextMoveGame(*this);
@@ -858,11 +854,9 @@ uint64_t Chess::perft(int depth)
     {
       // Grabbing current piece
       currIdx = pop_lsb(gameCopy.bKnights);
-      uint64_t possibleMoves = this->KNIGHT_MOVES[currIdx];
-      // std::cout << possibleMoves << std::endl;
+      uint64_t possibleMoves = this->KNIGHT_MOVES[currIdx] & targets;
       while (possibleMoves)
       {
-        std::cout << "KNIGHT" << std::endl;
         // Next possible move
         int nextIdx = pop_lsb(possibleMoves);
         // Initialize next move game
@@ -876,7 +870,7 @@ uint64_t Chess::perft(int depth)
     {
       // Grabbing current piece
       currIdx = pop_lsb(gameCopy.bBishops);
-      uint64_t possibleMoves = this->BISHOP_MOVES[currIdx][BishopHash(currIdx, this->blacks())];
+      uint64_t possibleMoves = this->BISHOP_MOVES[currIdx][BishopHash(currIdx, this->blacks())] & targets;
       while (possibleMoves)
       {
         // Next possible move
@@ -892,7 +886,7 @@ uint64_t Chess::perft(int depth)
     {
       // Grabbing current piece
       currIdx = pop_lsb(gameCopy.bRooks);
-      uint64_t possibleMoves = this->ROOK_MOVES[currIdx][RookHash(currIdx, this->blacks())];
+      uint64_t possibleMoves = this->ROOK_MOVES[currIdx][RookHash(currIdx, this->blacks())] & targets;
       while (possibleMoves)
       {
         // Next possible move
@@ -916,7 +910,7 @@ uint64_t Chess::perft(int depth)
     {
       // Grabbing current piece
       currIdx = pop_lsb(gameCopy.bQueens);
-      uint64_t possibleMoves = this->QUEEN_MOVES[currIdx][QueenHash(currIdx, this->blacks())];
+      uint64_t possibleMoves = this->QUEEN_MOVES[currIdx][QueenHash(currIdx, this->blacks())] & targets;
       while (possibleMoves)
       {
         // Next possible move
@@ -929,25 +923,48 @@ uint64_t Chess::perft(int depth)
     }
     // Black King
     currIdx = pop_lsb(gameCopy.bKing);
-    uint64_t possibleMoves = this->KING_MOVES[currIdx];
+    uint64_t possibleMoves = this->KING_MOVES[currIdx] & targets;
     while (possibleMoves)
     {
       // Next possible move
       int nextIdx = pop_lsb(possibleMoves);
       // Initialize next move game
       Chess nextMoveGame(*this);
-      nextMoveGame.MovePiece('k', currIdx, nextIdx, opponent);
       if (nextMoveGame.bQueenCastle)
       {
         nextMoveGame.bQueenCastle = false;
       }
-      else if (nextMoveGame.bCastle)
+      if (nextMoveGame.bCastle)
       {
         nextMoveGame.bCastle = false;
       }
+      nextMoveGame.MovePiece('k', currIdx, nextIdx, opponent);
       nodes += nextMoveGame.perft(depth - 1);
     }
+
     // Black Castles
+    // 0xE00000000000000ULL is 1110 00000000 00000000 00000000 00000000 00000000 00000000 00000000 aka idx 58, 59, 60
+    if (gameCopy.bQueenCastle && (targets & ~opponent & 0xE00000000000000ULL) && !this->InCheck(Color::BLACK, 58) && !this->InCheck(Color::BLACK, 59) && !this->InCheck(Color::BLACK, 60))
+    {
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('k', 60, 58, opponent);
+      nextMoveGame.bCastle = false;
+      nextMoveGame.bQueenCastle = false;
+      clear_bit(nextMoveGame.bRooks, 0);
+      set_bit(nextMoveGame.bRooks, 3);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+    // 0x6000000000000000ULL is 01100000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 aka idx 5,6
+    if (gameCopy.bCastle && (targets & ~opponent & 0x6000000000000000ULL) && !this->InCheck(Color::BLACK, 60) && !this->InCheck(Color::BLACK, 61) && !this->InCheck(Color::BLACK, 62))
+    {
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('k', 60, 62, opponent);
+      nextMoveGame.bCastle = false;
+      nextMoveGame.bQueenCastle = false;
+      clear_bit(nextMoveGame.bRooks, 7);
+      set_bit(nextMoveGame.bRooks, 5);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
   }
   return nodes;
 }
