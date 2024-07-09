@@ -522,6 +522,7 @@ void Chess::MovePiece(const char pieceType, const short start, const short end, 
   case 'P':
     set_bit(this->wPawns, end);
     clear_bit(this->wPawns, end);
+    this->lastPawnOrTake = 0;
     break;
   case 'N':
     set_bit(this->wKnights, end);
@@ -546,6 +547,7 @@ void Chess::MovePiece(const char pieceType, const short start, const short end, 
   case 'p':
     set_bit(this->bPawns, end);
     clear_bit(this->bPawns, end);
+    this->lastPawnOrTake = 0;
     break;
   case 'n':
     set_bit(this->bKnights, end);
@@ -683,25 +685,162 @@ uint64_t Chess::perft(int depth)
   {
     targets = ~(this->whites());
     opponent = this->blacks();
-    // White Pawns
-    while (gameCopy.wPawns)
+    uint64_t enPassantMask = (this->enPassantIdx == -1) ? 0ULL : (1ULL << this->enPassantIdx);
+    // White Pawns Advancing (Not Promoting)
+    uint64_t upPawns = up(this->wPawns) & targets & ~opponent & ~RANK_8;
+    while (upPawns)
     {
       // Grabbing current piece
-      currIdx = pop_lsb(gameCopy.wPawns);
-      if (up(1ULL << currIdx) & targets & ~opponent)
-      {
-        Chess nextMoveGame(*this);
-        nextMoveGame.MovePiece('P', currIdx, currIdx + 8, opponent);
-        nodes += nextMoveGame.perft(depth - 1);
-        if (currIdx < 16 && (up(up(1ULL << currIdx)) & targets & ~opponent))
-        {
-          nextMoveGame = Chess(*this);
-          nextMoveGame.MovePiece('P', currIdx, currIdx + 16, opponent);
-          nextMoveGame.enPassantIdx = currIdx + 8;
-          nodes += nextMoveGame.perft(depth - 1);
-        }
-      }
+      int nextIdx = pop_lsb(upPawns);
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 8, nextIdx, opponent);
+      nodes += nextMoveGame.perft(depth - 1);
     }
+    // White Pawns Advancing 2 squares
+    uint64_t twoSquarePawns = up(up(this->wPawns & RANK_2)) & targets & ~opponent;
+    while (twoSquarePawns)
+    {
+      int nextIdx = pop_lsb(twoSquarePawns);
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 16, nextIdx, opponent);
+      nextMoveGame.enPassantIdx = nextIdx - 8;
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+    // White Pawns Taking Left (Not Promoting)
+    uint64_t upleftPawns = upleft(this->wPawns) & opponent & ~RANK_8;
+    while (upleftPawns)
+    {
+      int nextIdx = pop_lsb(upleftPawns);
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 9, nextIdx, opponent);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+    // White Pawns Taking Right (Not Promoting)
+    uint64_t uprightPawns = upright(this->wPawns) & opponent & ~RANK_8;
+    while (uprightPawns)
+    {
+      int nextIdx = pop_lsb(uprightPawns);
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 7, nextIdx, opponent);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+    uint64_t upPromotions = up(this->wPawns) & targets & ~opponent & RANK_8;
+    while (upPromotions)
+    {
+      int nextIdx = pop_lsb(upPromotions);
+      // Queen Promotion
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 8, nextIdx, opponent);
+      clear_bit(nextMoveGame.wPawns, nextIdx);
+      set_bit(nextMoveGame.wQueens, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Rook Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 8, nextIdx, opponent);
+      clear_bit(nextMoveGame.wPawns, nextIdx);
+      set_bit(nextMoveGame.wRooks, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Knight Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 8, nextIdx, opponent);
+      clear_bit(nextMoveGame.wPawns, nextIdx);
+      set_bit(nextMoveGame.wKnights, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Bishop Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 8, nextIdx, opponent);
+      clear_bit(nextMoveGame.wPawns, nextIdx);
+      set_bit(nextMoveGame.wBishops, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+
+    uint64_t upleftPromotions = upleft(this->wPawns) & opponent & RANK_8;
+    while (upleftPromotions)
+    {
+      int nextIdx = pop_lsb(upleftPromotions);
+      // Queen Promotion
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 7, nextIdx, opponent);
+      clear_bit(nextMoveGame.wPawns, nextIdx);
+      set_bit(nextMoveGame.wQueens, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Rook Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 7, nextIdx, opponent);
+      clear_bit(nextMoveGame.wPawns, nextIdx);
+      set_bit(nextMoveGame.wRooks, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Knight Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 7, nextIdx, opponent);
+      clear_bit(nextMoveGame.wPawns, nextIdx);
+      set_bit(nextMoveGame.wKnights, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Bishop Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 7, nextIdx, opponent);
+      clear_bit(nextMoveGame.wPawns, nextIdx);
+      set_bit(nextMoveGame.wBishops, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+
+    uint64_t uprightPromotions = upright(this->wPawns) & opponent & RANK_8;
+    while (uprightPromotions)
+    {
+      int nextIdx = pop_lsb(uprightPromotions);
+      // Queen Promotion
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 9, nextIdx, opponent);
+      clear_bit(nextMoveGame.wPawns, nextIdx);
+      set_bit(nextMoveGame.wQueens, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Rook Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 9, nextIdx, opponent);
+      clear_bit(nextMoveGame.wPawns, nextIdx);
+      set_bit(nextMoveGame.wRooks, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Knight Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 9, nextIdx, opponent);
+      clear_bit(nextMoveGame.wPawns, nextIdx);
+      set_bit(nextMoveGame.wKnights, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Bishop Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('P', nextIdx - 9, nextIdx, opponent);
+      clear_bit(nextMoveGame.wPawns, nextIdx);
+      set_bit(nextMoveGame.wBishops, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+
+    // White Left En Passant
+    uint64_t leftEnPassant = upleft(this->wPawns) & enPassantMask;
+    if (leftEnPassant)
+    {
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('P', this->enPassantIdx - 7, this->enPassantIdx, opponent);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+
+    // White Right En Passant
+    uint64_t rightEnPassant = upright(this->wPawns) & enPassantMask;
+    if (rightEnPassant)
+    {
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('P', this->enPassantIdx - 9, this->enPassantIdx, opponent);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+
     // White Knights
     while (gameCopy.wKnights)
     {
@@ -830,24 +969,157 @@ uint64_t Chess::perft(int depth)
   {
     targets = ~(this->blacks());
     opponent = this->whites();
-    // Black Pawns
-    while (gameCopy.bPawns)
+    uint64_t enPassantMask = (this->enPassantIdx == -1) ? 0ULL : (1ULL << this->enPassantIdx);
+    // White Pawns Advancing (Not Promoting)
+    uint64_t downPawns = down(this->bPawns) & targets & ~opponent & ~RANK_1;
+    while (downPawns)
     {
       // Grabbing current piece
-      currIdx = pop_lsb(gameCopy.bPawns);
-      if (down(1ULL << currIdx) & targets & ~opponent)
-      {
-        Chess nextMoveGame(*this);
-        nextMoveGame.MovePiece('p', currIdx, currIdx - 8, opponent);
-        nodes += nextMoveGame.perft(depth - 1);
-        if (currIdx >= 48 && (down(down(1ULL << currIdx)) & targets & ~opponent))
-        {
-          nextMoveGame = Chess(*this);
-          nextMoveGame.MovePiece('p', currIdx, currIdx - 16, opponent);
-          nextMoveGame.enPassantIdx = currIdx - 8;
-          nodes += nextMoveGame.perft(depth - 1);
-        }
-      }
+      int nextIdx = pop_lsb(downPawns);
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 8, nextIdx, opponent);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+    // White Pawns Advancing 2 squares
+    uint64_t twoSquarePawns = down(down(this->bPawns & RANK_7)) & targets & ~opponent;
+    while (twoSquarePawns)
+    {
+      int nextIdx = pop_lsb(twoSquarePawns);
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 16, nextIdx, opponent);
+      nextMoveGame.enPassantIdx = nextIdx + 8;
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+    // White Pawns Taking Left (Not Promoting)
+    uint64_t downleftPawns = downleft(this->bPawns) & opponent & ~RANK_1;
+    while (downleftPawns)
+    {
+      int nextIdx = pop_lsb(downleftPawns);
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 9, nextIdx, opponent);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+    // White Pawns Taking Right (Not Promoting)
+    uint64_t downrightPawns = downright(this->bPawns) & opponent & ~RANK_1;
+    while (downrightPawns)
+    {
+      int nextIdx = pop_lsb(downrightPawns);
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 7, nextIdx, opponent);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+    uint64_t downPromotions = down(this->bPawns) & targets & ~opponent & RANK_1;
+    while (downPromotions)
+    {
+      int nextIdx = pop_lsb(downPromotions);
+      // Queen Promotion
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 8, nextIdx, opponent);
+      clear_bit(nextMoveGame.bPawns, nextIdx);
+      set_bit(nextMoveGame.bQueens, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Rook Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 8, nextIdx, opponent);
+      clear_bit(nextMoveGame.bPawns, nextIdx);
+      set_bit(nextMoveGame.bRooks, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Knight Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 8, nextIdx, opponent);
+      clear_bit(nextMoveGame.bPawns, nextIdx);
+      set_bit(nextMoveGame.bKnights, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Bishop Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 8, nextIdx, opponent);
+      clear_bit(nextMoveGame.bPawns, nextIdx);
+      set_bit(nextMoveGame.bBishops, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+
+    uint64_t downLeftPromotions = downleft(this->bPawns) & opponent & RANK_1;
+    while (downLeftPromotions)
+    {
+      int nextIdx = pop_lsb(downLeftPromotions);
+      // Queen Promotion
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 9, nextIdx, opponent);
+      clear_bit(nextMoveGame.bPawns, nextIdx);
+      set_bit(nextMoveGame.bQueens, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Rook Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 9, nextIdx, opponent);
+      clear_bit(nextMoveGame.bPawns, nextIdx);
+      set_bit(nextMoveGame.bRooks, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Knight Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 9, nextIdx, opponent);
+      clear_bit(nextMoveGame.bPawns, nextIdx);
+      set_bit(nextMoveGame.bKnights, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Bishop Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 9, nextIdx, opponent);
+      clear_bit(nextMoveGame.bPawns, nextIdx);
+      set_bit(nextMoveGame.bBishops, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+
+    uint64_t downRightPromotions = downright(this->bPawns) & opponent & RANK_1;
+    while (downRightPromotions)
+    {
+      int nextIdx = pop_lsb(downRightPromotions);
+      // Queen Promotion
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 7, nextIdx, opponent);
+      clear_bit(nextMoveGame.bPawns, nextIdx);
+      set_bit(nextMoveGame.bQueens, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Rook Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 7, nextIdx, opponent);
+      clear_bit(nextMoveGame.bPawns, nextIdx);
+      set_bit(nextMoveGame.bRooks, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Knight Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 7, nextIdx, opponent);
+      clear_bit(nextMoveGame.bPawns, nextIdx);
+      set_bit(nextMoveGame.bKnights, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+
+      // Bishop Promotion
+      nextMoveGame = Chess(*this);
+      nextMoveGame.MovePiece('p', nextIdx + 7, nextIdx, opponent);
+      clear_bit(nextMoveGame.bPawns, nextIdx);
+      set_bit(nextMoveGame.bBishops, nextIdx);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+
+    uint64_t leftEnPassant = downleft(this->bPawns) & enPassantMask;
+    if (leftEnPassant)
+    {
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('p', enPassantIdx + 9, enPassantIdx, opponent);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
+    uint64_t rightEnPassant = downright(this->bPawns) & enPassantMask;
+    if (rightEnPassant)
+    {
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('p', enPassantIdx + 7, enPassantIdx, opponent);
+      nodes += nextMoveGame.perft(depth - 1);
     }
     // Black Knights
     while (gameCopy.bKnights)
