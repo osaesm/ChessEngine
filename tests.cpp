@@ -70,6 +70,7 @@ bool FenTest5() {
 }
 
 void FenConversionTests() {
+  Chess::Initialize();
   int passedTests = 0;
   
   std::vector<bool> tests{
