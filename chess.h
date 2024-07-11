@@ -176,6 +176,8 @@ protected:
   short enPassantIdx;
   short lastPawnOrTake;
   int fullTurns;
+  std::vector<std::string> firstOccurrence;
+  std::vector<std::string> secondOccurrence;
   constexpr uint64_t whites() { return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing); };
   constexpr uint64_t blacks() { return (bPawns | bKnights | bBishops | bRooks | bQueens | bKing); };
 
@@ -187,10 +189,11 @@ public:
   std::string ConvertToFEN();
   std::vector<Chess *> LegalMoves();
   std::vector<Chess *> PseudoLegalMoves();
-  bool InCheck(const Color kingColor, const short kingIdx);
-  void MovePiece(const char pieceType, const short start, const short end, uint64_t opponent);
+  bool InCheck(const Color kingColor, const uint64_t kingIdx);
+  void MovePiece(const char pieceType, const int start, const int end, uint64_t opponent);
+  void PromotePawn(const char pieceType, const int start, const int end);
   uint64_t perft(int depth);
-  void divide(int depth);
+  uint64_t perft2(int depth);
 };
 
 #endif

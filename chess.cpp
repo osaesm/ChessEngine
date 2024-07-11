@@ -481,9 +481,116 @@ std::string Chess::ConvertToFEN()
   return this->BoardIdx() + " " + std::to_string(this->lastPawnOrTake) + " " + std::to_string(this->fullTurns);
 }
 
-bool Chess::InCheck(const Color kingColor, const short kingIdx)
+bool Chess::InCheck(const Color kingColor, const uint64_t kingIdx)
 {
-  return false;
+  uint64_t allPieces = (this->whites() | this->blacks()) ^ (kingColor == Color::WHITE ? this->wKing : this->bKing);
+  uint64_t opponent = (kingColor == Color::WHITE) ? this->blacks() : this->whites();
+  uint64_t oppRooks = (kingColor == Color::WHITE) ? this->bRooks : this->wRooks;
+  uint64_t oppBishops = (kingColor == Color::WHITE) ? this->bBishops : this->wBishops;
+  uint64_t oppKnights = (kingColor == Color::WHITE) ? this->bKnights : this->wKnights;
+  uint64_t oppQueens = (kingColor == Color::WHITE) ? this->bQueens : this->wQueens;
+  uint64_t oppPawns = (kingColor == Color::WHITE) ? this->bPawns : this->wPawns;
+  uint64_t oppKing = (kingColor == Color::WHITE) ? this->bKing : this->wKing;
+
+  for (uint64_t idx = kingIdx - 9, iMask = downleft(1ULL << kingIdx); iMask; idx -= 9, iMask = downleft(iMask))
+  {
+    if (get_bit(oppBishops, idx) || get_bit(oppQueens, idx) || ((idx == (kingIdx - 9)) && (kingColor == Color::BLACK) && get_bit(oppPawns, idx)))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
+  for (uint64_t idx = kingIdx - 8, iMask = down(1ULL << kingIdx); iMask; idx -= 8, iMask = down(iMask))
+  {
+    if (get_bit(oppRooks, idx) || get_bit(oppQueens, idx))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
+
+  for (uint64_t idx = kingIdx - 7, iMask = downright(1ULL << kingIdx); iMask; idx -= 7, iMask = downright(iMask))
+  {
+    if (idx == kingIdx - 7 && kingColor == Color::BLACK)
+    {
+      std::cout << get_bit(oppPawns, idx) << std::endl;
+    }
+    if (get_bit(oppBishops, idx) || get_bit(oppQueens, idx) || (idx == kingIdx - 7 && kingColor == Color::BLACK && get_bit(oppPawns, idx)))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
+
+  for (uint64_t idx = kingIdx - 1, iMask = left(1ULL << kingIdx); iMask; idx -= 1, iMask = left(iMask))
+  {
+    if (get_bit(oppRooks, idx) || get_bit(oppQueens, idx))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
+
+  for (uint64_t idx = kingIdx + 1, iMask = right(1ULL << kingIdx); iMask; idx += 1, iMask = right(iMask))
+  {
+    if (get_bit(oppRooks, idx) || get_bit(oppQueens, idx))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
+
+  for (uint64_t idx = kingIdx + 7, iMask = upleft(1ULL << kingIdx); iMask; idx += 7, iMask = upleft(iMask))
+  {
+    if (get_bit(oppBishops, idx) || get_bit(oppQueens, idx) || (kingColor == Color::WHITE && get_bit(oppPawns, idx)))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
+
+  for (uint64_t idx = kingIdx + 8, iMask = up(1ULL << kingIdx); iMask; idx += 8, iMask = up(iMask))
+  {
+    if (get_bit(oppRooks, idx) || get_bit(oppQueens, idx))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
+
+  for (uint64_t idx = kingIdx + 9, iMask = upright(1ULL << kingIdx); iMask; idx += 9, iMask = upright(iMask))
+  {
+    if (get_bit(oppBishops, idx) || get_bit(oppQueens, idx) || (kingColor == Color::WHITE && get_bit(oppPawns, idx)))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
+  return (KNIGHT_MOVES[kingIdx] & oppKnights) ? true : false;
 }
 
 std::vector<Chess *> Chess::LegalMoves()
@@ -515,7 +622,7 @@ std::vector<Chess *> Chess::LegalMoves()
 // This function flips the turn and increments, increments/resets lastPawnOrTake, updates castling on taking a rook, updates en passant on moving pawn 2 squares
 // and updates the piece bitboards (including when taking en passant)
 // This function doesn't handle castling (maybe happens at some point)
-void Chess::MovePiece(const char pieceType, const short start, const short end, uint64_t opponent)
+void Chess::MovePiece(const char pieceType, const int start, const int end, uint64_t opponent)
 {
   switch (pieceType)
   {
@@ -648,14 +755,49 @@ void Chess::MovePiece(const char pieceType, const short start, const short end, 
   }
 }
 
+void Chess::PromotePawn(const char pieceType, const int start, const int end)
+{
+  switch (pieceType)
+  {
+  case 'q':
+    if (end < 8)
+    {
+      set_bit(this->bQueens, end);
+      clear_bit(this->bPawns, start);
+    }
+    break;
+  case 'n':
+    set_bit(this->wKnights, end);
+    clear_bit(this->wKnights, end);
+    break;
+  case 'b':
+    set_bit(this->wBishops, end);
+    clear_bit(this->wBishops, end);
+    break;
+  case 'r':
+    set_bit(this->wRooks, end);
+    clear_bit(this->wRooks, end);
+    break;
+  }
+}
+
 std::vector<Chess *> Chess::PseudoLegalMoves()
 {
   std::vector<Chess *> pseudolegalMoves;
   return pseudolegalMoves;
 }
 
+uint64_t Chess::perft2(int depth)
+{
+  return 0ULL;
+}
+
 uint64_t Chess::perft(int depth)
 {
+  if (depth == 1)
+  {
+    std::cout << this->InCheck(this->turn, get_lsb(this->wKing)) << std::endl;
+  }
   // Base case
   if (depth == 0)
   {
@@ -668,7 +810,7 @@ uint64_t Chess::perft(int depth)
     {
       tempKing = this->wKing;
     }
-    return this->InCheck((Color)(!this->turn), pop_lsb(tempKing)) ? 0 : 1;
+    return this->InCheck((Color)(!this->turn), get_lsb(tempKing)) ? 0ULL : 1ULL;
   }
   uint64_t nodes = 0;
   // targets is a bitboard of available squares
@@ -970,7 +1112,7 @@ uint64_t Chess::perft(int depth)
     targets = ~(this->blacks());
     opponent = this->whites();
     uint64_t enPassantMask = (this->enPassantIdx == -1) ? 0ULL : (1ULL << this->enPassantIdx);
-    // White Pawns Advancing (Not Promoting)
+    // Black Pawns Advancing (Not Promoting)
     uint64_t downPawns = down(this->bPawns) & targets & ~opponent & ~RANK_1;
     while (downPawns)
     {
@@ -980,7 +1122,7 @@ uint64_t Chess::perft(int depth)
       nextMoveGame.MovePiece('p', nextIdx + 8, nextIdx, opponent);
       nodes += nextMoveGame.perft(depth - 1);
     }
-    // White Pawns Advancing 2 squares
+    // Black Pawns Advancing 2 squares
     uint64_t twoSquarePawns = down(down(this->bPawns & RANK_7)) & targets & ~opponent;
     while (twoSquarePawns)
     {
@@ -990,7 +1132,7 @@ uint64_t Chess::perft(int depth)
       nextMoveGame.enPassantIdx = nextIdx + 8;
       nodes += nextMoveGame.perft(depth - 1);
     }
-    // White Pawns Taking Left (Not Promoting)
+    // Black Pawns Taking Left (Not Promoting)
     uint64_t downleftPawns = downleft(this->bPawns) & opponent & ~RANK_1;
     while (downleftPawns)
     {
@@ -999,7 +1141,7 @@ uint64_t Chess::perft(int depth)
       nextMoveGame.MovePiece('p', nextIdx + 9, nextIdx, opponent);
       nodes += nextMoveGame.perft(depth - 1);
     }
-    // White Pawns Taking Right (Not Promoting)
+    // Black Pawns Taking Right (Not Promoting)
     uint64_t downrightPawns = downright(this->bPawns) & opponent & ~RANK_1;
     while (downrightPawns)
     {
@@ -1239,9 +1381,4 @@ uint64_t Chess::perft(int depth)
     }
   }
   return nodes;
-}
-
-void Chess::divide(int depth)
-{
-  return;
 }
