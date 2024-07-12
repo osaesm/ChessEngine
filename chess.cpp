@@ -161,6 +161,9 @@ void Chess::Initialize()
 
 Chess::Chess(const std::string &fenString)
 {
+  this->firstOccurrence.clear();
+  this->secondOccurrence.clear();
+  this->thirdOccurrence = false;
   // First part
   auto currSquare = 56;
   auto idx = 0;
@@ -303,6 +306,7 @@ Chess::Chess(const std::string &fenString)
 
 Chess::Chess(const Chess &x)
 {
+  // Bitboards
   this->wPawns = x.wPawns;
   this->bPawns = x.bPawns;
   this->wKnights = x.wKnights;
@@ -315,13 +319,37 @@ Chess::Chess(const Chess &x)
   this->bQueens = x.bQueens;
   this->wKing = x.wKing;
   this->bKing = x.bKing;
+
+  // Turn
+  this->turn = x.turn;
+
+  // Castling
   this->wCastle = x.wCastle;
   this->wQueenCastle = x.wQueenCastle;
   this->bCastle = x.bCastle;
   this->bQueenCastle = x.bQueenCastle;
+
+  // En Passant
   this->enPassantIdx = x.enPassantIdx;
+
+  // Last Pawn or Take
   this->lastPawnOrTake = x.lastPawnOrTake;
+
+  // Full Turns
   this->fullTurns = x.fullTurns;
+
+  // First/Second/Third Occurrence
+  this->firstOccurrence.clear();
+  for (const auto &k : x.firstOccurrence)
+  {
+    this->firstOccurrence.push_back(k);
+  }
+  this->secondOccurrence.clear();
+  for (const auto &k : x.secondOccurrence)
+  {
+    this->secondOccurrence.push_back(k);
+  }
+  this->thirdOccurrence = x.thirdOccurrence;
 }
 
 std::string Chess::BoardIdx()
@@ -644,17 +672,108 @@ std::vector<Chess *> Chess::LegalMoves()
   return legalMoves;
 }
 
-// This function flips the turn and increments, increments/resets lastPawnOrTake, updates castling on taking a rook, updates en passant on moving pawn 2 squares
-// and updates the piece bitboards (including when taking en passant)
-// This function doesn't handle castling (maybe happens at some point)
+/**
+ * This function:
+ * - Checks for normal capture
+ * - Then checks for en passant capture
+ * - Updates bitboards
+ * - Updates enPassantIdx to -1 unless moving a pawn 2 squares
+ * - Updates castling rights when moving a rook or king
+ * - Updates castling rights when a rook is captured
+ * - Resets firstOccurrence / secondOccurrence with irreversible moves (ie pawn move or capture)
+ * - Increments fullTurns when black moves
+ * - Advances the turns between white/black
+ * - Increments lastPawnOrTake unless taking or moving a pawn (lol)
+ * - Slots new boardHash into occurrence vectors after executing the move
+ */
 void Chess::MovePiece(const char pieceType, const int start, const int end, uint64_t opponent)
 {
+  // If we take (not en passant), set opponent bit to 0 and lastPawnOrTake to 0
+  if (get_bit(opponent, end))
+  {
+    clear_bit(opponent, end);
+    this->lastPawnOrTake = 0;
+    // Updating the other colors to remove the taken piece
+    if (this->turn == Color::WHITE)
+    {
+      clear_bit(this->bPawns, end);
+      clear_bit(this->bKnights, end);
+      clear_bit(this->bBishops, end);
+      clear_bit(this->bRooks, end);
+      clear_bit(this->bQueens, end);
+      // do we need to clear the bKing?
+      clear_bit(this->bKing, end);
+      // Updating castling rights when taking rooks
+      if (this->bCastle && end == 63)
+      {
+        this->bCastle = false;
+      }
+      else if (this->bQueenCastle && end == 56)
+      {
+        this->bQueenCastle = false;
+      }
+    }
+    else
+    {
+      clear_bit(this->wPawns, end);
+      clear_bit(this->wKnights, end);
+      clear_bit(this->wBishops, end);
+      clear_bit(this->wRooks, end);
+      clear_bit(this->wQueens, end);
+      // do we need to clear the wKing?
+      clear_bit(this->wKing, end);
+      // Updating castling rights when taking rooks
+      if (this->wCastle && end == 7)
+      {
+        this->wCastle = false;
+      }
+      else if (this->wQueenCastle && end == 0)
+      {
+        this->wQueenCastle = false;
+      }
+    }
+  }
+  // If enPassantIdx == -1, we check if that's the current move, and regardless we set the enPassantIdx to -1.
+  else if (this->enPassantIdx != -1)
+  {
+    // Check if en passant capture
+    if (this->enPassantIdx == end)
+    {
+      if (pieceType == 'P')
+      {
+        clear_bit(this->bPawns, end - 8);
+      }
+      else
+      {
+        clear_bit(this->wPawns, end + 8);
+      }
+    }
+    // Set en passant to -1
+    this->enPassantIdx = -1;
+  }
+  // All non-capture moves
+  else
+  {
+    ++this->lastPawnOrTake;
+  }
+
+  // Updating bitboards of the piece that's moving
+  // Setting lastPawnOrTake to 0 if moving a pawn
+  // Updating castling variables when moving rooks / kings
+  // Updating enPassantIdx if moving a pawn two squares
+  // Resetting firstOccurrence / secondOccurrence with pawn moves (irreversible)
   switch (pieceType)
   {
   case 'P':
     set_bit(this->wPawns, end);
     clear_bit(this->wPawns, start);
     this->lastPawnOrTake = 0;
+    if (end - start == 16)
+    {
+      this->enPassantIdx = start + 8;
+    }
+    firstOccurrence.clear();
+    secondOccurrence.clear();
     break;
   case 'N':
     set_bit(this->wKnights, end);
@@ -667,6 +786,14 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
   case 'R':
     set_bit(this->wRooks, end);
     clear_bit(this->wRooks, start);
+    if (this->wQueenCastle && (start == 0))
+    {
+      this->wQueenCastle = false;
+    }
+    else if (this->wCastle && (start == 7))
+    {
+      this->wCastle = false;
+    }
     break;
   case 'Q':
     set_bit(this->wQueens, end);
@@ -675,11 +802,25 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
   case 'K':
     set_bit(this->wKing, end);
     clear_bit(this->wKing, start);
+    if (this->wQueenCastle)
+    {
+      this->wQueenCastle = false;
+    }
+    if (this->wCastle)
+    {
+      this->wCastle = false;
+    }
     break;
   case 'p':
     set_bit(this->bPawns, end);
     clear_bit(this->bPawns, start);
     this->lastPawnOrTake = 0;
+    if (start - end == 16)
+    {
+      this->enPassantIdx = start - 8;
+    }
+    firstOccurrence.clear();
+    secondOccurrence.clear();
     break;
   case 'n':
     set_bit(this->bKnights, end);
@@ -692,6 +833,14 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
   case 'r':
     set_bit(this->bRooks, end);
     clear_bit(this->bRooks, start);
+    if (this->bQueenCastle && (start == 56))
+    {
+      this->bQueenCastle = false;
+    }
+    else if (this->bCastle)
+    {
+      this->bCastle = false;
+    }
     break;
   case 'q':
     set_bit(this->bQueens, end);
@@ -700,110 +849,46 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
   default:
     set_bit(this->bKing, end);
     clear_bit(this->bKing, start);
+    if (this->bQueenCastle)
+    {
+      this->bQueenCastle = false;
+    }
+    if (this->bCastle)
+    {
+      this->bCastle = false;
+    }
     break;
   }
+
+  // Incrementing Full Turns
   if (this->turn == Color::BLACK)
   {
     ++this->fullTurns;
   }
-  // Flip turn
-  this->turn = (Color) !this->turn;
-  // Set en passant to -1
-  if (this->enPassantIdx != -1)
-  {
-    this->enPassantIdx = -1;
-  }
-  // If we take, set opponent bit to 0 and lastPawnOrTake to 0
-  if (get_bit(opponent, end))
-  {
-    clear_bit(opponent, end);
-    this->lastPawnOrTake = 0;
-    // Updating the other colors to remove the taken piece
-    if (this->turn == Color::WHITE)
-    {
-      // White Takes En Passant
-      if (this->enPassantIdx == end)
-      {
-        clear_bit(this->bPawns, end - 8);
-      }
-      else
-      {
-        clear_bit(this->bPawns, end);
-        clear_bit(this->bKnights, end);
-        clear_bit(this->bBishops, end);
-        clear_bit(this->bRooks, end);
-        clear_bit(this->bQueens, end);
-        // do we need to clear the bKing?
-        clear_bit(this->bKing, end);
-        // Updating castling rights when taking rooks
-        if (this->bCastle && end == 63)
-        {
-          this->bCastle = false;
-        }
-        else if (this->bQueenCastle && end == 56)
-        {
-          this->bQueenCastle = false;
-        }
-      }
-    }
-    else
-    {
-      // Black Takes En Passant
-      if (this->enPassantIdx == end)
-      {
-        clear_bit(this->wPawns, end + 8);
-      }
-      else
-      {
-        clear_bit(this->wPawns, end);
-        clear_bit(this->wKnights, end);
-        clear_bit(this->wBishops, end);
-        clear_bit(this->wRooks, end);
-        clear_bit(this->wQueens, end);
-        // do we need to clear the wKing?
-        clear_bit(this->wKing, end);
-        // Updating castling rights when taking rooks
-        if (this->wCastle && end == 7)
-        {
-          this->bCastle = false;
-        }
-        else if (this->bQueenCastle && end == 0)
-        {
-          this->bQueenCastle = false;
-        }
-      }
-    }
-  }
-  else
-  {
-    ++this->lastPawnOrTake;
-  }
-}
 
-void Chess::PromotePawn(const char pieceType, const int start, const int end)
-{
-  switch (pieceType)
+  // Advance Turn
+  this->turn = (Color) !this->turn;
+
+  std::string boardHash = this->BoardIdx();
+  // Updating firstOccurrence / secondOccurrence
+  for (const auto &x : this->firstOccurrence)
   {
-  case 'q':
-    if (end < 8)
+    if (!boardHash.compare(x))
     {
-      set_bit(this->bQueens, end);
-      clear_bit(this->bPawns, start);
+      for (const auto &y : this->secondOccurrence)
+      {
+        if (!boardHash.compare(y))
+        {
+          this->thirdOccurrence = true;
+          return;
+        }
+      }
+      this->secondOccurrence.push_back(boardHash);
+      return;
     }
-    break;
-  case 'n':
-    set_bit(this->wKnights, end);
-    clear_bit(this->wKnights, end);
-    break;
-  case 'b':
-    set_bit(this->wBishops, end);
-    clear_bit(this->wBishops, end);
-    break;
-  case 'r':
-    set_bit(this->wRooks, end);
-    clear_bit(this->wRooks, end);
-    break;
   }
+  this->firstOccurrence.push_back(boardHash);
+  return;
 }
 
 std::vector<Chess *> Chess::PseudoLegalMoves()

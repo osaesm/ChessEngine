@@ -161,13 +161,6 @@ constexpr int QueenHash(short idx, uint64_t blockers)
 class Chess
 {
 protected:
-  // 0: white forward, 1: white takes, 2: black forward, 3: black takes
-  static uint64_t PAWN_MOVES[64][4];
-  static uint64_t KNIGHT_MOVES[64];
-  static uint64_t KING_MOVES[64];
-  static ankerl::unordered_dense::map<int, uint64_t> ROOK_MOVES[64];
-  static ankerl::unordered_dense::map<int, uint64_t> BISHOP_MOVES[64];
-  static ankerl::unordered_dense::map<int, uint64_t> QUEEN_MOVES[64];
   uint64_t wPawns, bPawns, wKnights, bKnights, wBishops, bBishops, wRooks, bRooks, wQueens, bQueens, wKing, bKing;
   enum Color : bool
   {
@@ -175,11 +168,21 @@ protected:
     BLACK = false
   } turn;
   bool wCastle, wQueenCastle, bCastle, bQueenCastle;
-  short enPassantIdx;
+  int enPassantIdx;
   short lastPawnOrTake;
   int fullTurns;
   std::vector<std::string> firstOccurrence;
   std::vector<std::string> secondOccurrence;
+  bool thirdOccurrence;
+
+  // 0: white forward, 1: white takes, 2: black forward, 3: black takes
+  static uint64_t PAWN_MOVES[64][4];
+  static uint64_t KNIGHT_MOVES[64];
+  static uint64_t KING_MOVES[64];
+  static ankerl::unordered_dense::map<int, uint64_t> ROOK_MOVES[64];
+  static ankerl::unordered_dense::map<int, uint64_t> BISHOP_MOVES[64];
+  static ankerl::unordered_dense::map<int, uint64_t> QUEEN_MOVES[64];
+
   constexpr uint64_t whites() { return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing); };
   constexpr uint64_t blacks() { return (bPawns | bKnights | bBishops | bRooks | bQueens | bKing); };
   constexpr uint64_t empties() { return ~(whites() | blacks()); };
@@ -194,9 +197,7 @@ public:
   std::vector<Chess *> PseudoLegalMoves();
   bool InCheck(const Color kingColor, const uint64_t kingIdx);
   void MovePiece(const char pieceType, const int start, const int end, uint64_t opponent);
-  void PromotePawn(const char pieceType, const int start, const int end);
   uint64_t perft(int depth);
-  uint64_t perft2(int depth);
 };
 
 #endif
