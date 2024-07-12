@@ -9,6 +9,7 @@ uint64_t Chess::KING_MOVES[64] = {};
 ankerl::unordered_dense::map<int, uint64_t> Chess::BISHOP_MOVES[64] = {};
 ankerl::unordered_dense::map<int, uint64_t> Chess::ROOK_MOVES[64] = {};
 ankerl::unordered_dense::map<int, uint64_t> Chess::QUEEN_MOVES[64] = {};
+char Chess::promotions[4] = {'q', 'r', 'n', 'b'};
 
 // Hard-coded sliding piece moves
 void Chess::Initialize()
@@ -140,7 +141,7 @@ void Chess::Initialize()
       PAWN_MOVES[i][0] = up(idx);
     }
     PAWN_MOVES[i][1] = 0;
-    PAWN_MOVES[i][1] = upleft(idx) | upright(idx);
+    PAWN_MOVES[i][1] = up_left(idx) | up_right(idx);
     PAWN_MOVES[i][2] = 0;
     if (idx >= 48 && idx < 56)
     {
@@ -151,11 +152,11 @@ void Chess::Initialize()
       PAWN_MOVES[i][2] = down(idx);
     }
     PAWN_MOVES[i][3] = 0;
-    PAWN_MOVES[i][3] = downleft(idx) | downright(idx);
+    PAWN_MOVES[i][3] = down_left(idx) | down_right(idx);
     KNIGHT_MOVES[i] = 0;
-    KNIGHT_MOVES[i] = down(downleft(idx)) | down(downright(idx)) | left(downleft(idx)) | right(downright(idx)) | up(upleft(idx)) | up(upright(idx)) | left(upleft(idx)) | right(upright(idx));
+    KNIGHT_MOVES[i] = down(down_left(idx)) | down(down_right(idx)) | left(down_left(idx)) | right(down_right(idx)) | up(up_left(idx)) | up(up_right(idx)) | left(up_left(idx)) | right(up_right(idx));
     KING_MOVES[i] = 0;
-    KING_MOVES[i] = downleft(idx) | down(idx) | downright(idx) | left(idx) | right(idx) | upleft(idx) | up(idx) | upright(idx);
+    KING_MOVES[i] = down_left(idx) | down(idx) | down_right(idx) | left(idx) | right(idx) | up_left(idx) | up(idx) | up_right(idx);
   }
 }
 
@@ -545,7 +546,7 @@ bool Chess::InCheck(const Color kingColor, const uint64_t kingBoard)
   uint64_t oppKing = (kingColor == Color::WHITE) ? this->bKing : this->wKing;
 
   const uint64_t kingIdx = (kingColor == Color::WHITE) ? get_lsb(this->wKing) : get_lsb(this->bKing);
-  for (uint64_t idx = kingIdx - 9, iMask = downleft(kingBoard); iMask; idx -= 9, iMask = downleft(iMask))
+  for (uint64_t idx = kingIdx - 9, iMask = down_left(kingBoard); iMask; idx -= 9, iMask = down_left(iMask))
   {
     if (get_bit(oppBishops, idx) || get_bit(oppQueens, idx) || ((idx == (kingIdx - 9)) && (kingColor == Color::BLACK) && get_bit(oppPawns, idx)))
     {
@@ -568,7 +569,7 @@ bool Chess::InCheck(const Color kingColor, const uint64_t kingBoard)
     }
   }
 
-  for (uint64_t idx = kingIdx - 7, iMask = downright(kingBoard); iMask; idx -= 7, iMask = downright(iMask))
+  for (uint64_t idx = kingIdx - 7, iMask = down_right(kingBoard); iMask; idx -= 7, iMask = down_right(iMask))
   {
     if (idx == kingIdx - 7 && kingColor == Color::BLACK)
     {
@@ -608,7 +609,7 @@ bool Chess::InCheck(const Color kingColor, const uint64_t kingBoard)
     }
   }
 
-  for (uint64_t idx = kingIdx + 7, iMask = upleft(kingBoard); iMask; idx += 7, iMask = upleft(iMask))
+  for (uint64_t idx = kingIdx + 7, iMask = up_left(kingBoard); iMask; idx += 7, iMask = up_left(iMask))
   {
     if (get_bit(oppBishops, idx) || get_bit(oppQueens, idx) || (kingColor == Color::WHITE && get_bit(oppPawns, idx)))
     {
@@ -632,7 +633,7 @@ bool Chess::InCheck(const Color kingColor, const uint64_t kingBoard)
     }
   }
 
-  for (uint64_t idx = kingIdx + 9, iMask = upright(kingBoard); iMask; idx += 9, iMask = upright(iMask))
+  for (uint64_t idx = kingIdx + 9, iMask = up_right(kingBoard); iMask; idx += 9, iMask = up_right(iMask))
   {
     if (get_bit(oppBishops, idx) || get_bit(oppQueens, idx) || (kingColor == Color::WHITE && get_bit(oppPawns, idx)))
     {
@@ -685,6 +686,9 @@ std::vector<Chess *> Chess::LegalMoves()
  * - Advances the turns between white/black
  * - Increments lastPawnOrTake unless taking or moving a pawn (lol)
  * - Slots new boardHash into occurrence vectors after executing the move
+ * TODO:
+ * - Figure out castling
+ * - Figure out pawn upgrades
  */
 void Chess::MovePiece(const char pieceType, const int start, const int end, uint64_t opponent)
 {
@@ -891,6 +895,55 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
   return;
 }
 
+/**
+ * This function:
+ * - Updates the appropriate pawn bitboard
+ * - Updates the promotion choice bitboard
+ */
+void Chess::PromotePawn(const char pieceType, const int end)
+{
+  if (end > 8)
+  {
+    // White Pawn
+    clear_bit(this->wPawns, end);
+    switch (pieceType)
+    {
+    case 'q':
+      set_bit(this->wQueens, end);
+      break;
+    case 'r':
+      set_bit(this->wRooks, end);
+      break;
+    case 'n':
+      set_bit(this->wKnights, end);
+      break;
+    default:
+      set_bit(this->wBishops, end);
+      break;
+    }
+  }
+  else
+  {
+    // Black Pawn
+    clear_bit(this->bPawns, end);
+    switch (pieceType)
+    {
+    case 'q':
+      set_bit(this->bQueens, end);
+      break;
+    case 'r':
+      set_bit(this->bRooks, end);
+      break;
+    case 'n':
+      set_bit(this->bKnights, end);
+      break;
+    default:
+      set_bit(this->bBishops, end);
+      break;
+    }
+  }
+}
+
 std::vector<Chess *> Chess::PseudoLegalMoves()
 {
   std::vector<Chess *> pseudolegalMoves;
@@ -899,5 +952,66 @@ std::vector<Chess *> Chess::PseudoLegalMoves()
 
 uint64_t Chess::perft(int depth)
 {
-  return 0ULL;
+  uint64_t nodes = 0ULL;
+  uint64_t targets = this->turn ? ~(this->whites()) : ~(this->blacks());
+  uint64_t opponent = this->turn ? this->blacks() : this->whites();
+
+  Chess gameCopy(*this);
+  int idx = -1;
+  uint64_t currMoves = 0;
+  if (this->turn)
+  {
+
+    // White Pawns
+    while (gameCopy.wPawns)
+    {
+      idx = pop_lsb(gameCopy.wPawns);
+      currMoves = (PAWN_MOVES[idx][0] & this->empties()) | (PAWN_MOVES[idx][1] & opponent);
+      // Non-promotion moves
+      while (currMoves & ~RANK_8)
+      {
+        Chess nextMoveGame(*this);
+        nextMoveGame.MovePiece('P', idx, pop_lsb(currMoves), opponent);
+        nodes += nextMoveGame.perft(depth - 1);
+      }
+      // Promotion moves
+      while (currMoves)
+      {
+        int currEnd = pop_lsb(currMoves);
+        for (const char option : promotions)
+        {
+          Chess nextMoveGame(*this);
+
+          // MovePiece handles most of the stuff correctly, but we need to replace the pawn with whatever the promotion choice is
+          nextMoveGame.MovePiece('P', idx, currEnd, opponent);
+          nextMoveGame.PromotePawn(option, currEnd);
+          nodes += nextMoveGame.perft(depth - 1);
+        }
+      }
+    }
+
+    // White Knights
+    while (gameCopy.wKnights)
+    {
+      idx = pop_lsb(gameCopy.wKnights);
+      currMoves = KNIGHT_MOVES[idx] & targets;
+      while (currMoves)
+      {
+        Chess nextMoveGame(*this);
+        nextMoveGame.MovePiece('N', idx, pop_lsb(currMoves), opponent);
+        nodes += nextMoveGame.perft(depth - 1);
+      }
+    }
+
+    // White Bishops
+    while (gameCopy.wBishops)
+    {
+      idx = pop_lsb(gameCopy.wBishops);
+      currMoves = BISHOP_MOVES[idx][BishopHash(idx, targets)];
+    }
+  }
+  else
+  {
+  }
+  return nodes;
 }

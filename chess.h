@@ -42,117 +42,129 @@ constexpr uint64_t down(uint64_t board) { return (board & ~RANK_1) >> 8; }
 constexpr uint64_t left(uint64_t board) { return (board & ~FILE_A) >> 1; }
 constexpr uint64_t right(uint64_t board) { return (board & ~FILE_H) << 1; }
 
-constexpr uint64_t upleft(uint64_t board) { return (board & ~RANK_8 & ~FILE_A) << 7; }
-constexpr uint64_t upright(uint64_t board) { return (board & ~RANK_8 & ~FILE_H) << 9; }
-constexpr uint64_t downleft(uint64_t board) { return (board & ~RANK_1 & ~FILE_A) >> 9; }
-constexpr uint64_t downright(uint64_t board) { return (board & ~RANK_1 & ~FILE_H) >> 7; }
+constexpr uint64_t up_left(uint64_t board) { return (board & ~RANK_8 & ~FILE_A) << 7; }
+constexpr uint64_t up_right(uint64_t board) { return (board & ~RANK_8 & ~FILE_H) << 9; }
+constexpr uint64_t down_left(uint64_t board) { return (board & ~RANK_1 & ~FILE_A) >> 9; }
+constexpr uint64_t down_right(uint64_t board) { return (board & ~RANK_1 & ~FILE_H) >> 7; }
 
-constexpr int RookHash(short idx, uint64_t blockers)
+constexpr int RookHash(short idx, uint64_t targets)
 {
-  int leftSide = 0;
-  while (leftSide < 8 && ~(get_bit(blockers, idx - leftSide)))
+  int leftSide = 1;
+  uint64_t leftMask = left(1ULL << idx);
+  for (; leftMask && (leftMask & targets); ++leftSide, leftMask = left(leftMask))
   {
-    ++leftSide;
   }
   leftSide--;
-  int rightSide = 0;
-  while (rightSide < 8 && ~(get_bit(blockers, idx + rightSide)))
+
+  int upSide = 1;
+  uint64_t upMask = up(1ULL << idx);
+  for (; upMask && (upMask & targets); ++upSide, upMask = up(upMask))
   {
-    ++rightSide;
-  }
-  rightSide--;
-  int upSide = 0;
-  while (upSide < 8 && ~(get_bit(blockers, idx + (upSide * 8))))
-  {
-    ++upSide;
   }
   upSide--;
-  int downSide = 0;
-  while (downSide < 8 && ~(get_bit(blockers, idx - (downSide * 8))))
+
+  int rightSide = 1;
+  uint64_t rightMask = right(1ULL << idx);
+  for (; rightMask && (rightMask & targets); ++rightSide, rightMask = right(rightMask))
   {
-    ++downSide;
+  }
+  rightSide--;
+
+  int downSide = 1;
+  uint64_t downMask = down(1ULL << idx);
+  for (; downMask && (downMask & targets); ++downSide, downMask = down(downMask))
+  {
   }
   downSide--;
   return (leftSide << 9) + (upSide << 6) + (rightSide << 3) + downSide;
 }
 
-constexpr int BishopHash(short idx, uint64_t blockers)
+constexpr int BishopHash(short idx, uint64_t targets)
 {
-  int upLeftSide = 0;
-  while (upLeftSide < 8 && ~(get_bit(blockers, 7 * (idx + upLeftSide))))
+  int upLeftSide = 1;
+  uint64_t upLeftMask = up_left(1ULL << idx);
+  for (; upLeftMask && (upLeftMask & targets); ++upLeftSide, upLeftMask = up_left(upLeftMask))
   {
-    ++upLeftSide;
   }
   upLeftSide--;
-  int upRightSide = 0;
-  while (upRightSide < 8 && ~(get_bit(blockers, 9 * (idx + upRightSide))))
+
+  int upRightSide = 1;
+  uint64_t upRightMask = up_right(1ULL << idx);
+  for (; upRightMask && (upRightMask & targets); ++upRightSide, upRightMask = up_right(upRightMask))
   {
-    ++upRightSide;
   }
   upRightSide--;
-  int downRightSide = 0;
-  while (downRightSide < 8 && ~(get_bit(blockers, 7 * (idx - downRightSide))))
+
+  int downRightSide = 1;
+  uint64_t downRightMask = down_right(1ULL << idx);
+  for (; downRightMask && (downRightMask & targets); ++downRightSide, downRightMask = down_right(downRightMask))
   {
-    ++downRightSide;
   }
   downRightSide--;
-  int downLeftSide = 0;
-  while (downLeftSide < 8 && ~(get_bit(blockers, 9 * (idx - downLeftSide))))
+
+  int downLeftSide = 1;
+  uint64_t downLeftMask = down_left(1ULL << idx);
+  for (; downLeftMask && (downLeftMask & targets); ++downLeftSide, downLeftMask = down_left(downLeftMask))
   {
-    ++downLeftSide;
   }
   downLeftSide--;
   return (upLeftSide << 9) + (upRightSide << 6) + (downRightSide << 3) + downLeftSide;
 }
 
-constexpr int QueenHash(short idx, uint64_t blockers)
+constexpr int QueenHash(short idx, uint64_t targets)
 {
-  int leftSide = 0;
-  while (leftSide < 8 && ~(get_bit(blockers, idx - leftSide)))
+  int leftSide = 1;
+  uint64_t leftMask = left(1ULL << idx);
+  for (; leftMask && (leftMask & targets); ++leftSide, leftMask = left(leftMask))
   {
-    ++leftSide;
   }
   leftSide--;
-  int rightSide = 0;
-  while (rightSide < 8 && ~(get_bit(blockers, idx + rightSide)))
+
+  int upSide = 1;
+  uint64_t upMask = up(1ULL << idx);
+  for (; upMask && (upMask & targets); ++upSide, upMask = up(upMask))
   {
-    ++rightSide;
-  }
-  rightSide--;
-  int upSide = 0;
-  while (upSide < 8 && ~(get_bit(blockers, idx + (upSide * 8))))
-  {
-    ++upSide;
   }
   upSide--;
-  int downSide = 0;
-  while (downSide < 8 && ~(get_bit(blockers, idx - (downSide * 8))))
+
+  int rightSide = 1;
+  uint64_t rightMask = right(1ULL << idx);
+  for (; rightMask && (rightMask & targets); ++rightSide, rightMask = right(rightMask))
   {
-    ++downSide;
+  }
+  rightSide--;
+
+  int downSide = 1;
+  uint64_t downMask = down(1ULL << idx);
+  for (; downMask && (downMask & targets); ++downSide, downMask = down(downMask))
+  {
   }
   downSide--;
-  int upLeftSide = 0;
-  while (upLeftSide < 8 && ~(get_bit(blockers, 7 * (idx + upLeftSide))))
+  int upLeftSide = 1;
+  uint64_t upLeftMask = up_left(1ULL << idx);
+  for (; upLeftMask && (upLeftMask & targets); ++upLeftSide, upLeftMask = up_left(upLeftMask))
   {
-    ++upLeftSide;
   }
   upLeftSide--;
-  int upRightSide = 0;
-  while (upRightSide < 8 && ~(get_bit(blockers, 9 * (idx + upRightSide))))
+
+  int upRightSide = 1;
+  uint64_t upRightMask = up_right(1ULL << idx);
+  for (; upRightMask && (upRightMask & targets); ++upRightSide, upRightMask = up_right(upRightMask))
   {
-    ++upRightSide;
   }
   upRightSide--;
-  int downRightSide = 0;
-  while (downRightSide < 8 && ~(get_bit(blockers, 7 * (idx - downRightSide))))
+
+  int downRightSide = 1;
+  uint64_t downRightMask = down_right(1ULL << idx);
+  for (; downRightMask && (downRightMask & targets); ++downRightSide, downRightMask = down_right(downRightMask))
   {
-    ++downRightSide;
   }
   downRightSide--;
-  int downLeftSide = 0;
-  while (downLeftSide < 8 && ~(get_bit(blockers, 9 * (idx - downLeftSide))))
+
+  int downLeftSide = 1;
+  uint64_t downLeftMask = down_left(1ULL << idx);
+  for (; downLeftMask && (downLeftMask & targets); ++downLeftSide, downLeftMask = down_left(downLeftMask))
   {
-    ++downLeftSide;
   }
   downLeftSide--;
   return (leftSide << 21) + (upLeftSide << 18) + (upSide << 15) + (upRightSide << 12) + (rightSide << 9) + (downRightSide << 6) + (downSide << 3) + downLeftSide;
@@ -182,6 +194,7 @@ protected:
   static ankerl::unordered_dense::map<int, uint64_t> ROOK_MOVES[64];
   static ankerl::unordered_dense::map<int, uint64_t> BISHOP_MOVES[64];
   static ankerl::unordered_dense::map<int, uint64_t> QUEEN_MOVES[64];
+  static char promotions[4];
 
   constexpr uint64_t whites() { return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing); };
   constexpr uint64_t blacks() { return (bPawns | bKnights | bBishops | bRooks | bQueens | bKing); };
@@ -197,6 +210,7 @@ public:
   std::vector<Chess *> PseudoLegalMoves();
   bool InCheck(const Color kingColor, const uint64_t kingIdx);
   void MovePiece(const char pieceType, const int start, const int end, uint64_t opponent);
+  void PromotePawn(const char pieceType, const int end);
   uint64_t perft(int depth);
 };
 
