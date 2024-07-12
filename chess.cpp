@@ -536,116 +536,112 @@ std::string Chess::ConvertToFEN()
 
 bool Chess::InCheck(const Color kingColor, const uint64_t kingBoard)
 {
-  // uint64_t allPieces = (this->whites() | this->blacks()) ^ (kingColor == Color::WHITE ? this->wKing : this->bKing);
-  // uint64_t opponent = (kingColor == Color::WHITE) ? this->blacks() : this->whites();
-  // uint64_t oppRooks = (kingColor == Color::WHITE) ? this->bRooks : this->wRooks;
-  // uint64_t oppBishops = (kingColor == Color::WHITE) ? this->bBishops : this->wBishops;
-  // uint64_t oppKnights = (kingColor == Color::WHITE) ? this->bKnights : this->wKnights;
-  // uint64_t oppQueens = (kingColor == Color::WHITE) ? this->bQueens : this->wQueens;
-  // uint64_t oppPawns = (kingColor == Color::WHITE) ? this->bPawns : this->wPawns;
-  // uint64_t oppKing = (kingColor == Color::WHITE) ? this->bKing : this->wKing;
+  uint64_t allPieces = (this->whites() | this->blacks()) ^ (kingColor ? this->wKing : this->bKing);
+  uint64_t opponent = kingColor ? this->blacks() : this->whites();
+  uint64_t oppRooks = kingColor ? this->bRooks : this->wRooks;
+  uint64_t oppBishops = kingColor ? this->bBishops : this->wBishops;
+  uint64_t oppKnights = kingColor ? this->bKnights : this->wKnights;
+  uint64_t oppQueens = kingColor ? this->bQueens : this->wQueens;
+  uint64_t oppPawns = kingColor ? this->bPawns : this->wPawns;
+  uint64_t oppKing = kingColor ? this->bKing : this->wKing;
 
-  // const uint64_t kingIdx = (kingColor == Color::WHITE) ? get_lsb(this->wKing) : get_lsb(this->bKing);
-  // for (uint64_t idx = kingIdx - 9, iMask = down_left(kingBoard); iMask; idx -= 9, iMask = down_left(iMask))
-  // {
-  //   if (get_bit(oppBishops, idx) || get_bit(oppQueens, idx) || ((idx == (kingIdx - 9)) && (kingColor == Color::BLACK) && get_bit(oppPawns, idx)))
-  //   {
-  //     return true;
-  //   }
-  //   if (get_bit(allPieces, idx))
-  //   {
-  //     break;
-  //   }
-  // }
-  // for (uint64_t idx = kingIdx - 8, iMask = down(kingBoard); iMask; idx -= 8, iMask = down(iMask))
-  // {
-  //   if (get_bit(oppRooks, idx) || get_bit(oppQueens, idx))
-  //   {
-  //     return true;
-  //   }
-  //   if (get_bit(allPieces, idx))
-  //   {
-  //     break;
-  //   }
-  // }
+  const uint64_t kingIdx = kingColor ? get_lsb(this->wKing) : get_lsb(this->bKing);
+  for (uint64_t idx = kingIdx - 9, iMask = down_left(kingBoard); iMask; idx -= 9, iMask = down_left(iMask))
+  {
+    if (get_bit(oppBishops | oppQueens, idx) || ((idx == kingIdx - 9) && ((!kingColor && get_bit(oppPawns, idx)) || get_bit(oppKing, idx))))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
 
-  // for (uint64_t idx = kingIdx - 7, iMask = down_right(kingBoard); iMask; idx -= 7, iMask = down_right(iMask))
-  // {
-  //   if (idx == kingIdx - 7 && kingColor == Color::BLACK)
-  //   {
-  //     std::cout << get_bit(oppPawns, idx) << std::endl;
-  //   }
-  //   if (get_bit(oppBishops, idx) || get_bit(oppQueens, idx) || ((idx == (kingIdx - 7)) && (kingColor == Color::BLACK) && get_bit(oppPawns, idx)))
-  //   {
-  //     return true;
-  //   }
-  //   if (get_bit(allPieces, idx))
-  //   {
-  //     break;
-  //   }
-  // }
+  for (uint64_t idx = kingIdx - 8, iMask = down(kingBoard); iMask; idx -= 8, iMask = down(iMask))
+  {
+    if (get_bit(oppRooks | oppQueens, idx) || ((idx == kingIdx - 8) && get_bit(oppKing, idx)))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
 
-  // for (uint64_t idx = kingIdx - 1, iMask = left(kingBoard); iMask; idx -= 1, iMask = left(iMask))
-  // {
-  //   if (get_bit(oppRooks, idx) || get_bit(oppQueens, idx))
-  //   {
-  //     return true;
-  //   }
-  //   if (get_bit(allPieces, idx))
-  //   {
-  //     break;
-  //   }
-  // }
+  for (uint64_t idx = kingIdx - 7, iMask = down_right(kingBoard); iMask; idx -= 7, iMask = down_right(iMask))
+  {
+    if (get_bit(oppBishops | oppQueens, idx) || ((idx == kingIdx - 7) && ((!kingColor && get_bit(oppPawns, idx)) || get_bit(oppKing, idx))))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
 
-  // for (uint64_t idx = kingIdx + 1, iMask = right(kingBoard); iMask; idx += 1, iMask = right(iMask))
-  // {
-  //   if (get_bit(oppRooks, idx) || get_bit(oppQueens, idx))
-  //   {
-  //     return true;
-  //   }
-  //   if (get_bit(allPieces, idx))
-  //   {
-  //     break;
-  //   }
-  // }
+  for (uint64_t idx = kingIdx - 1, iMask = left(kingBoard); iMask; idx -= 1, iMask = left(iMask))
+  {
+    if (get_bit(oppRooks | oppQueens, idx) || ((idx == kingIdx - 1) && get_bit(oppKing, idx)))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
 
-  // for (uint64_t idx = kingIdx + 7, iMask = up_left(kingBoard); iMask; idx += 7, iMask = up_left(iMask))
-  // {
-  //   if (get_bit(oppBishops, idx) || get_bit(oppQueens, idx) || (kingColor == Color::WHITE && get_bit(oppPawns, idx)))
-  //   {
-  //     return true;
-  //   }
-  //   if (get_bit(allPieces, idx))
-  //   {
-  //     break;
-  //   }
-  // }
+  for (uint64_t idx = kingIdx + 1, iMask = right(kingBoard); iMask; idx += 1, iMask = right(iMask))
+  {
+    if (get_bit(oppRooks | oppQueens, idx) || ((idx == kingIdx + 1) && get_bit(oppKing, idx)))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
 
-  // for (uint64_t idx = kingIdx + 8, iMask = up(kingBoard); iMask; idx += 8, iMask = up(iMask))
-  // {
-  //   if (get_bit(oppRooks, idx) || get_bit(oppQueens, idx))
-  //   {
-  //     return true;
-  //   }
-  //   if (get_bit(allPieces, idx))
-  //   {
-  //     break;
-  //   }
-  // }
+  for (uint64_t idx = kingIdx + 7, iMask = up_left(kingBoard); iMask; idx += 7, iMask = up_left(iMask))
+  {
+    if (get_bit(oppBishops | oppQueens, idx) || ((idx == kingIdx + 7) && ((kingColor && get_bit(oppPawns, idx)) || get_bit(oppKing, idx))))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
 
-  // for (uint64_t idx = kingIdx + 9, iMask = up_right(kingBoard); iMask; idx += 9, iMask = up_right(iMask))
-  // {
-  //   if (get_bit(oppBishops, idx) || get_bit(oppQueens, idx) || (kingColor == Color::WHITE && get_bit(oppPawns, idx)))
-  //   {
-  //     return true;
-  //   }
-  //   if (get_bit(allPieces, idx))
-  //   {
-  //     break;
-  //   }
-  // }
-  // return (KNIGHT_MOVES[kingIdx] & oppKnights) ? true : false;
-  return false;
+  for (uint64_t idx = kingIdx + 8, iMask = up(kingBoard); iMask; idx += 8, iMask = up(iMask))
+  {
+    if (get_bit(oppRooks | oppQueens, idx) || ((idx == kingIdx + 8) && get_bit(oppKing, idx)))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
+
+  for (uint64_t idx = kingIdx + 9, iMask = up_right(kingBoard); iMask; idx += 9, iMask = up_right(iMask))
+  {
+    if (get_bit(oppBishops | oppQueens, idx) || ((idx == kingIdx + 9) && ((kingColor && get_bit(oppPawns, idx)) || get_bit(oppKing, idx))))
+    {
+      return true;
+    }
+    if (get_bit(allPieces, idx))
+    {
+      break;
+    }
+  }
+  return (KNIGHT_MOVES[kingIdx] & oppKnights) ? true : false;
 }
 
 std::vector<Chess *> Chess::LegalMoves()
