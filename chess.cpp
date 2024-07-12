@@ -54,7 +54,7 @@ void Chess::Initialize()
                   {
                     for (int downLeft = 0; downLeft <= col && downLeft <= row; ++downLeft)
                     {
-                      int queenHash = (left << 21) + (upLeft << 18) + (up << 15) + (upRight << 12) + (right << 9) + (downRight << 6) + (down << 3) + downRight;
+                      int queenHash = (left << 21) + (upLeft << 18) + (up << 15) + (upRight << 12) + (right << 9) + (downRight << 6) + (down << 3) + downLeft;
                       QUEEN_MOVES[idx][queenHash] = 0;
                       for (auto x = idx - (down * 8); x < idx; x += 8)
                       {
@@ -355,8 +355,8 @@ Chess::Chess(const Chess &x)
 
 std::string Chess::BoardIdx()
 {
-  // Creating copy to pop pieces off of
-  Chess *copy = new Chess(*this);
+  // Creating gameCopy to pop pieces off of
+  Chess *gameCopy = new Chess(*this);
 
   // First Part
   char board[64];
@@ -366,75 +366,75 @@ std::string Chess::BoardIdx()
   }
   // Iterate over each piece
   // White Pawns
-  while (copy->wPawns)
+  while (gameCopy->wPawns)
   {
-    int idx = pop_lsb(copy->wPawns);
+    int idx = pop_lsb(gameCopy->wPawns);
     board[idx] = 'P';
   }
   // Black Pawns
-  while (copy->bPawns)
+  while (gameCopy->bPawns)
   {
-    int idx = pop_lsb(copy->bPawns);
+    int idx = pop_lsb(gameCopy->bPawns);
     board[idx] = 'p';
   }
   // White Knights
-  while (copy->wKnights)
+  while (gameCopy->wKnights)
   {
-    int idx = pop_lsb(copy->wKnights);
+    int idx = pop_lsb(gameCopy->wKnights);
     board[idx] = 'N';
   }
   // Black Knights
-  while (copy->bKnights)
+  while (gameCopy->bKnights)
   {
-    int idx = pop_lsb(copy->bKnights);
+    int idx = pop_lsb(gameCopy->bKnights);
     board[idx] = 'n';
   }
   // White Bishops
-  while (copy->wBishops)
+  while (gameCopy->wBishops)
   {
-    int idx = pop_lsb(copy->wBishops);
+    int idx = pop_lsb(gameCopy->wBishops);
     board[idx] = 'B';
   }
   // Black Bishops
-  while (copy->bBishops)
+  while (gameCopy->bBishops)
   {
-    int idx = pop_lsb(copy->bBishops);
+    int idx = pop_lsb(gameCopy->bBishops);
     board[idx] = 'b';
   }
   // White Rooks
-  while (copy->wRooks)
+  while (gameCopy->wRooks)
   {
-    int idx = pop_lsb(copy->wRooks);
+    int idx = pop_lsb(gameCopy->wRooks);
     board[idx] = 'R';
   }
   // Black Rooks
-  while (copy->bRooks)
+  while (gameCopy->bRooks)
   {
-    int idx = pop_lsb(copy->bRooks);
+    int idx = pop_lsb(gameCopy->bRooks);
     board[idx] = 'r';
   }
   // White Queens
-  while (copy->wQueens)
+  while (gameCopy->wQueens)
   {
-    int idx = pop_lsb(copy->wQueens);
+    int idx = pop_lsb(gameCopy->wQueens);
     board[idx] = 'Q';
   }
   // Black Queens
-  while (copy->bQueens)
+  while (gameCopy->bQueens)
   {
-    int idx = pop_lsb(copy->bQueens);
+    int idx = pop_lsb(gameCopy->bQueens);
     board[idx] = 'q';
   }
   // White King
-  while (copy->wKing)
+  while (gameCopy->wKing)
   {
-    int idx = pop_lsb(copy->wKing);
+    int idx = pop_lsb(gameCopy->wKing);
     board[idx] = 'K';
   }
   // Black King
-  while (copy->bKing)
+  while (gameCopy->bKing)
   {
-    int idx = pop_lsb(copy->bKing);
+    int idx = pop_lsb(gameCopy->bKing);
     board[idx] = 'k';
   }
 
@@ -740,7 +740,7 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
     // Check if en passant capture
     if (this->enPassantIdx == end)
     {
-      if (pieceType == 'P')
+      if (end > 32)
       {
         clear_bit(this->bPawns, end - 8);
       }
@@ -1053,6 +1053,7 @@ uint64_t Chess::perft(int depth)
     }
 
     // White King
+    idx = pop_lsb(gameCopy.wKing);
     currMoves = KING_MOVES[idx] & targets;
     while (currMoves)
     {
@@ -1063,6 +1064,95 @@ uint64_t Chess::perft(int depth)
   }
   else
   {
+     // Black Pawns
+    while (gameCopy.bPawns)
+    {
+      idx = pop_lsb(gameCopy.bPawns);
+      currMoves = (PAWN_MOVES[idx][2] & this->empties()) | (PAWN_MOVES[idx][3] & (opponent | (1ULL << this->enPassantIdx)));
+      // Promotion moves
+      while (currMoves & RANK_1)
+      {
+        int currEnd = pop_lsb(currMoves);
+        for (const char option : promotions)
+        {
+          Chess nextMoveGame(*this);
+
+          // MovePiece handles most of the stuff correctly, but we need to replace the pawn with whatever the promotion choice is
+          nextMoveGame.MovePiece('p', idx, currEnd, opponent);
+          nextMoveGame.PromotePawn(option, currEnd);
+          nodes += nextMoveGame.perft(depth - 1);
+        }
+      }
+      // Non-promotion moves
+      while (currMoves)
+      {
+        Chess nextMoveGame(*this);
+        nextMoveGame.MovePiece('p', idx, pop_lsb(currMoves), opponent);
+        nodes += nextMoveGame.perft(depth - 1);
+      }
+    }
+
+    // Black Knights
+    while (gameCopy.bKnights)
+    {
+      idx = pop_lsb(gameCopy.bKnights);
+      currMoves = KNIGHT_MOVES[idx] & targets;
+      while (currMoves)
+      {
+        Chess nextMoveGame(*this);
+        nextMoveGame.MovePiece('n', idx, pop_lsb(currMoves), opponent);
+        nodes += nextMoveGame.perft(depth - 1);
+      }
+    }
+
+    // // Black Bishops
+    // while (gameCopy.bBishops)
+    // {
+    //   idx = pop_lsb(gameCopy.bBishops);
+    //   currMoves = BISHOP_MOVES[idx][BishopHash(idx, targets)];
+    //   while (currMoves)
+    //   {
+    //     Chess nextMoveGame(*this);
+    //     nextMoveGame.MovePiece('b', idx, pop_lsb(currMoves), opponent);
+    //     nodes += nextMoveGame.perft(depth - 1);
+    //   }
+    // }
+
+    // // Black Rooks
+    // while (gameCopy.bRooks)
+    // {
+    //   idx = pop_lsb(gameCopy.bRooks);
+    //   currMoves = ROOK_MOVES[idx][RookHash(idx, targets)];
+    //   while (currMoves)
+    //   {
+    //     Chess nextMoveGame(*this);
+    //     nextMoveGame.MovePiece('r', idx, pop_lsb(currMoves), opponent);
+    //     nodes += nextMoveGame.perft(depth - 1);
+    //   }
+    // }
+
+    // Black Queens
+    while (gameCopy.bQueens)
+    {
+      idx = pop_lsb(gameCopy.bQueens);
+      currMoves = QUEEN_MOVES[idx][QueenHash(idx, targets)];
+      while (currMoves)
+      {
+        Chess nextMoveGame(*this);
+        nextMoveGame.MovePiece('q', idx, pop_lsb(currMoves), opponent);
+        nodes += nextMoveGame.perft(depth - 1);
+      }
+    }
+
+    // Black King
+    idx = pop_lsb(gameCopy.bKing);
+    currMoves = KING_MOVES[idx] & targets;
+    while (currMoves)
+    {
+      Chess nextMoveGame(*this);
+      nextMoveGame.MovePiece('k', idx, pop_lsb(currMoves), opponent);
+      nodes += nextMoveGame.perft(depth - 1);
+    }
   }
   return nodes;
 }

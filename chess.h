@@ -140,6 +140,7 @@ constexpr int QueenHash(short idx, uint64_t targets)
   {
   }
   downSide--;
+
   int upLeftSide = 1;
   uint64_t upLeftMask = up_left(1ULL << idx);
   for (; upLeftMask && (upLeftMask & targets); ++upLeftSide, upLeftMask = up_left(upLeftMask))
@@ -167,6 +168,7 @@ constexpr int QueenHash(short idx, uint64_t targets)
   {
   }
   downLeftSide--;
+  
   return (leftSide << 21) + (upLeftSide << 18) + (upSide << 15) + (upRightSide << 12) + (rightSide << 9) + (downRightSide << 6) + (downSide << 3) + downLeftSide;
 }
 
