@@ -161,6 +161,8 @@ constexpr int QueenHash(short idx, uint64_t blockers)
 class Chess
 {
 protected:
+  // 0: white forward, 1: white takes, 2: black forward, 3: black takes
+  static uint64_t PAWN_MOVES[64][4];
   static uint64_t KNIGHT_MOVES[64];
   static uint64_t KING_MOVES[64];
   static ankerl::unordered_dense::map<int, uint64_t> ROOK_MOVES[64];
@@ -180,6 +182,7 @@ protected:
   std::vector<std::string> secondOccurrence;
   constexpr uint64_t whites() { return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing); };
   constexpr uint64_t blacks() { return (bPawns | bKnights | bBishops | bRooks | bQueens | bKing); };
+  constexpr uint64_t empties() { return ~(whites() | blacks()); };
 
 public:
   Chess(const std::string &fenString);
