@@ -1,7 +1,10 @@
 #ifndef CHESS_H
 #define CHESS_H
 
+#include <bit>
+#include <bitset>
 #include <cstdint>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -10,11 +13,10 @@
 #define set_bit(b, i) ((b) |= (1ULL << i))
 #define get_bit(b, i) ((b) & (1ULL << i))
 #define clear_bit(b, i) ((b) &= ~(1ULL << i))
-#define get_lsb(b) (__builtin_ctzll(b))
 
 inline int pop_lsb(uint64_t &b)
 {
-  int i = get_lsb(b);
+  int i = std::countr_zero(b);
   b &= (b - 1);
   return i;
 }
@@ -47,128 +49,224 @@ constexpr uint64_t up_right(uint64_t board) { return (board & ~RANK_8 & ~FILE_H)
 constexpr uint64_t down_left(uint64_t board) { return (board & ~RANK_1 & ~FILE_A) >> 9; }
 constexpr uint64_t down_right(uint64_t board) { return (board & ~RANK_1 & ~FILE_H) >> 7; }
 
-constexpr int RookHash(short idx, uint64_t targets)
+constexpr int RookHash(short idx, uint64_t empties, uint64_t opponent)
 {
   int leftSide = 1;
   uint64_t leftMask = left(1ULL << idx);
-  for (; leftMask && (leftMask & targets); ++leftSide, leftMask = left(leftMask))
+  for (; leftMask & empties; ++leftSide, leftMask = left(leftMask))
   {
   }
-  leftSide--;
+  if (leftMask & opponent)
+  {
+  }
+  else
+  {
+    leftSide--;
+  }
 
   int upSide = 1;
   uint64_t upMask = up(1ULL << idx);
-  for (; upMask && (upMask & targets); ++upSide, upMask = up(upMask))
+  for (; upMask & empties; ++upSide, upMask = up(upMask))
   {
   }
-  upSide--;
+  if (upMask & opponent)
+  {
+  }
+  else
+  {
+    upSide--;
+  }
 
   int rightSide = 1;
   uint64_t rightMask = right(1ULL << idx);
-  for (; rightMask && (rightMask & targets); ++rightSide, rightMask = right(rightMask))
+  for (; rightMask & empties; ++rightSide, rightMask = right(rightMask))
   {
   }
-  rightSide--;
+  if (rightMask & opponent)
+  {
+  }
+  else
+  {
+    rightSide--;
+  }
 
   int downSide = 1;
   uint64_t downMask = down(1ULL << idx);
-  for (; downMask && (downMask & targets); ++downSide, downMask = down(downMask))
+  for (; downMask & empties; ++downSide, downMask = down(downMask))
   {
   }
-  downSide--;
+  if (downMask & opponent)
+  {
+  }
+  else
+  {
+    downSide--;
+  }
   return (leftSide << 9) + (upSide << 6) + (rightSide << 3) + downSide;
 }
 
-constexpr int BishopHash(short idx, uint64_t targets)
+constexpr int BishopHash(short idx, uint64_t empties, uint64_t opponent)
 {
   int upLeftSide = 1;
   uint64_t upLeftMask = up_left(1ULL << idx);
-  for (; upLeftMask && (upLeftMask & targets); ++upLeftSide, upLeftMask = up_left(upLeftMask))
+  for (; upLeftMask & empties; ++upLeftSide, upLeftMask = up_left(upLeftMask))
   {
   }
-  upLeftSide--;
+  if (upLeftMask & opponent)
+  {
+  }
+  else
+  {
+    upLeftSide--;
+  }
 
   int upRightSide = 1;
   uint64_t upRightMask = up_right(1ULL << idx);
-  for (; upRightMask && (upRightMask & targets); ++upRightSide, upRightMask = up_right(upRightMask))
+  for (; upRightMask & empties; ++upRightSide, upRightMask = up_right(upRightMask))
   {
   }
-  upRightSide--;
+  if (upRightMask & opponent)
+  {
+  }
+  else
+  {
+    upRightSide--;
+  }
 
   int downRightSide = 1;
   uint64_t downRightMask = down_right(1ULL << idx);
-  for (; downRightMask && (downRightMask & targets); ++downRightSide, downRightMask = down_right(downRightMask))
+  for (; downRightMask & empties; ++downRightSide, downRightMask = down_right(downRightMask))
   {
   }
-  downRightSide--;
+  if (downRightMask & opponent)
+  {
+  }
+  else
+  {
+    downRightSide--;
+  }
 
   int downLeftSide = 1;
   uint64_t downLeftMask = down_left(1ULL << idx);
-  for (; downLeftMask && (downLeftMask & targets); ++downLeftSide, downLeftMask = down_left(downLeftMask))
+  for (; downLeftMask & empties; ++downLeftSide, downLeftMask = down_left(downLeftMask))
   {
   }
-  downLeftSide--;
+  if (downLeftMask & opponent)
+  {
+  }
+  else
+  {
+    downLeftSide--;
+  }
   return (upLeftSide << 9) + (upRightSide << 6) + (downRightSide << 3) + downLeftSide;
 }
 
-constexpr int QueenHash(short idx, uint64_t targets)
+constexpr int QueenHash(short idx, uint64_t empties, uint64_t opponent)
 {
   int leftSide = 1;
   uint64_t leftMask = left(1ULL << idx);
-  for (; leftMask && (leftMask & targets); ++leftSide, leftMask = left(leftMask))
+  for (; leftMask & empties; ++leftSide, leftMask = left(leftMask))
   {
   }
-  leftSide--;
+  if (leftMask & opponent)
+  {
+  }
+  else
+  {
+    leftSide--;
+  }
 
   int upSide = 1;
   uint64_t upMask = up(1ULL << idx);
-  for (; upMask && (upMask & targets); ++upSide, upMask = up(upMask))
+  for (; upMask & empties; ++upSide, upMask = up(upMask))
   {
   }
-  upSide--;
+  if (upMask & opponent)
+  {
+  }
+  else
+  {
+    upSide--;
+  }
 
   int rightSide = 1;
   uint64_t rightMask = right(1ULL << idx);
-  for (; rightMask && (rightMask & targets); ++rightSide, rightMask = right(rightMask))
+  for (; rightMask & empties; ++rightSide, rightMask = right(rightMask))
   {
   }
-  rightSide--;
+  if (rightMask & opponent)
+  {
+  }
+  else
+  {
+    rightSide--;
+  }
 
   int downSide = 1;
   uint64_t downMask = down(1ULL << idx);
-  for (; downMask && (downMask & targets); ++downSide, downMask = down(downMask))
+  for (; downMask & empties; ++downSide, downMask = down(downMask))
   {
   }
-  downSide--;
+  if (downMask & opponent)
+  {
+  }
+  else
+  {
+    downSide--;
+  }
 
   int upLeftSide = 1;
   uint64_t upLeftMask = up_left(1ULL << idx);
-  for (; upLeftMask && (upLeftMask & targets); ++upLeftSide, upLeftMask = up_left(upLeftMask))
+  for (; upLeftMask & empties; ++upLeftSide, upLeftMask = up_left(upLeftMask))
   {
   }
-  upLeftSide--;
+  if (upLeftMask & opponent)
+  {
+  }
+  else
+  {
+    upLeftSide--;
+  }
 
   int upRightSide = 1;
   uint64_t upRightMask = up_right(1ULL << idx);
-  for (; upRightMask && (upRightMask & targets); ++upRightSide, upRightMask = up_right(upRightMask))
+  for (; upRightMask & empties; ++upRightSide, upRightMask = up_right(upRightMask))
   {
   }
-  upRightSide--;
+  if (upRightMask & opponent)
+  {
+  }
+  else
+  {
+    upRightSide--;
+  }
 
   int downRightSide = 1;
   uint64_t downRightMask = down_right(1ULL << idx);
-  for (; downRightMask && (downRightMask & targets); ++downRightSide, downRightMask = down_right(downRightMask))
+  for (; downRightMask & empties; ++downRightSide, downRightMask = down_right(downRightMask))
   {
   }
-  downRightSide--;
+  if (downRightMask & opponent)
+  {
+  }
+  else
+  {
+    downRightSide--;
+  }
 
   int downLeftSide = 1;
   uint64_t downLeftMask = down_left(1ULL << idx);
-  for (; downLeftMask && (downLeftMask & targets); ++downLeftSide, downLeftMask = down_left(downLeftMask))
+  for (; downLeftMask & empties; ++downLeftSide, downLeftMask = down_left(downLeftMask))
   {
   }
-  downLeftSide--;
-  
+  if (downLeftMask & opponent)
+  {
+  }
+  else
+  {
+    downLeftSide--;
+  }
+
   return (leftSide << 21) + (upLeftSide << 18) + (upSide << 15) + (upRightSide << 12) + (rightSide << 9) + (downRightSide << 6) + (downSide << 3) + downLeftSide;
 }
 
@@ -189,8 +287,8 @@ protected:
   std::vector<std::string> secondOccurrence;
   bool thirdOccurrence;
 
-  // 0: white forward, 1: white takes, 2: black forward, 3: black takes
-  static uint64_t PAWN_MOVES[64][4];
+  // 0: white takes, 1: black takes
+  static uint64_t PAWN_TAKES[64][2];
   static uint64_t KNIGHT_MOVES[64];
   static uint64_t KING_MOVES[64];
   static ankerl::unordered_dense::map<int, uint64_t> ROOK_MOVES[64];

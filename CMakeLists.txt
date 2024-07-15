@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.28.3)
 project(chess)
 set(C_MAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 add_subdirectory(extern/unordered_dense)
 set(SOURCE_FILES chess.h chess.cpp main.cpp)
 add_executable(chess ${SOURCE_FILES})
