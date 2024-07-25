@@ -680,7 +680,7 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
     clear_bit(opponent, end);
     this->lastPawnOrTake = 0;
     // Updating the other colors to remove the taken piece
-    if (this->turn == Color::WHITE)
+    if (this->turn)
     {
       clear_bit(this->bPawns, end);
       clear_bit(this->bKnights, end);
@@ -721,7 +721,7 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
     this->firstOccurrence.clear();
     this->secondOccurrence.clear();
   }
-  // If enPassantIdx == -1, we check if that's the current move, and regardless we set the enPassantIdx to -1.
+  // If enPassantIdx != -1, we check if that's the current move, and regardless we set the enPassantIdx to -1.
   else if (this->enPassantIdx != -1)
   {
     // Check if en passant capture
@@ -806,6 +806,7 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
       this->firstOccurrence.clear();
       this->secondOccurrence.clear();
       this->wQueenCastle = false;
+      this->wCastle = false;
     }
     if (this->wCastle)
     {
@@ -817,6 +818,7 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
       this->firstOccurrence.clear();
       this->secondOccurrence.clear();
       this->wCastle = false;
+      this->wQueenCastle = false;
     }
     break;
   case 'p':
@@ -871,6 +873,7 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
       this->firstOccurrence.clear();
       this->secondOccurrence.clear();
       this->bQueenCastle = false;
+      this->bCastle = false;
     }
     if (this->bCastle)
     {
@@ -882,6 +885,7 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
       this->firstOccurrence.clear();
       this->secondOccurrence.clear();
       this->bCastle = false;
+      this->bQueenCastle = false;
     }
     break;
   }
@@ -976,25 +980,20 @@ std::vector<Chess *> Chess::PseudoLegalMoves()
 
 uint64_t Chess::perft(int depth)
 {
+  // Was the last move legal?
+  if ((this->turn && this->InCheck(Color::BLACK, this->bKing)) || (!this->turn && this->InCheck(Color::WHITE, this->wKing)))
+  {
+    return 0;
+  }
+
   // Base Case
   if (depth == 0)
   {
-    if (this->turn)
-    {
-      if (this->InCheck(Color::BLACK, this->bKing))
-      {
-        return 0;
-      }
-      // std::cout << this->ConvertToFEN() << std::endl;
-      return 1;
-    }
-    // Did White's move leave them in check?
-    if (this->InCheck(Color::WHITE, this->wKing))
-    {
-      return 0;
-    }
-    // std::cout << this->ConvertToFEN() << std::endl;
     return 1;
+  }
+
+  if (this->thirdOccurrence) {
+    return 0;
   }
 
   uint64_t nodes = 0ULL;
@@ -1016,7 +1015,7 @@ uint64_t Chess::perft(int depth)
       {
         currMoves = (up(1ULL << idx) & this->empties()) | (PAWN_TAKES[idx][0] & opponent) | (up(up(1ULL << idx) & this->empties()) & this->empties());
       }
-      else 
+      else
       {
         currMoves = (up(1ULL << idx) & this->empties()) | (PAWN_TAKES[idx][0] & (opponent | enPassantMask));
       }
@@ -1105,21 +1104,22 @@ uint64_t Chess::perft(int depth)
       nodes += nextMoveGame.perft(depth - 1);
     }
 
-    if (this->wCastle && ((this->empties() & 0x60ULL) == 0x60ULL) && !this->InCheck(Color::WHITE, this->wKing) && !this->InCheck(Color::WHITE, right(this->wKing)) && !this->InCheck(Color::WHITE, right(right(this->wKing)))) {
+    if (this->wCastle && ((this->empties() & 0x60ULL) == 0x60ULL) && !this->InCheck(Color::WHITE, this->wKing) && !this->InCheck(Color::WHITE, right(this->wKing)) && !this->InCheck(Color::WHITE, right(right(this->wKing))))
+    {
       Chess nextMoveGame(*this);
       nextMoveGame.MovePiece('K', 4, 6, opponent);
       nodes += nextMoveGame.perft(depth - 1);
     }
-    if (this->wQueenCastle && ((this->empties() & 0xEULL) == 0xEULL) && !this->InCheck(Color::WHITE, this->wKing) && !this->InCheck(Color::WHITE, left(this->wKing)) && !this->InCheck(Color::WHITE, left(left(this->wKing)))) {
+    if (this->wQueenCastle && ((this->empties() & 0xEULL) == 0xEULL) && !this->InCheck(Color::WHITE, this->wKing) && !this->InCheck(Color::WHITE, left(this->wKing)) && !this->InCheck(Color::WHITE, left(left(this->wKing))))
+    {
       Chess nextMoveGame(*this);
       nextMoveGame.MovePiece('K', 4, 2, opponent);
       nodes += nextMoveGame.perft(depth - 1);
     }
-
   }
   else
   {
-     // Black Pawns
+    // Black Pawns
     while (gameCopy.bPawns)
     {
       idx = pop_lsb(gameCopy.bPawns);
@@ -1216,12 +1216,14 @@ uint64_t Chess::perft(int depth)
       nodes += nextMoveGame.perft(depth - 1);
     }
 
-    if (this->bCastle && ((this->empties() & 0x6000000000000000ULL) == 0x6000000000000000ULL) && !this->InCheck(Color::BLACK, this->bKing) && !this->InCheck(Color::BLACK, right(this->bKing)) && !this->InCheck(Color::BLACK, right(right(this->bKing)))) {
+    if (this->bCastle && ((this->empties() & 0x6000000000000000ULL) == 0x6000000000000000ULL) && !this->InCheck(Color::BLACK, this->bKing) && !this->InCheck(Color::BLACK, right(this->bKing)) && !this->InCheck(Color::BLACK, right(right(this->bKing))))
+    {
       Chess nextMoveGame(*this);
       nextMoveGame.MovePiece('k', 60, 62, opponent);
       nodes += nextMoveGame.perft(depth - 1);
     }
-    if (this->wQueenCastle && ((this->empties() & 0xE00000000000000ULL) == 0xE00000000000000ULL) && !this->InCheck(Color::BLACK, this->bKing) && !this->InCheck(Color::BLACK, left(this->bKing)) && !this->InCheck(Color::BLACK, left(left(this->bKing)))) {
+    if (this->wQueenCastle && ((this->empties() & 0xE00000000000000ULL) == 0xE00000000000000ULL) && !this->InCheck(Color::BLACK, this->bKing) && !this->InCheck(Color::BLACK, left(this->bKing)) && !this->InCheck(Color::BLACK, left(left(this->bKing))))
+    {
       Chess nextMoveGame(*this);
       nextMoveGame.MovePiece('k', 60, 58, opponent);
       nodes += nextMoveGame.perft(depth - 1);

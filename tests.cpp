@@ -109,6 +109,7 @@ bool PerftTest1()
     if (game->perft(i + 1) != results[i])
     {
       std::cout << "Failed Perft Test 1" << std::endl;
+      std::cout << "Depth: " << i + 1 << std::endl;
       std::cout << "Expected: \t" << results[i] << std::endl;
       std::cout << "Actual: \t" << game->perft(i + 1) << std::endl;
       return false;
@@ -127,6 +128,7 @@ bool PerftTest2()
     if (game->perft(i + 1) != results[i])
     {
       std::cout << "Failed Perft Test 2" << std::endl;
+      std::cout << "Depth: " << i + 1 << std::endl;
       std::cout << "Expected: \t" << results[i] << std::endl;
       std::cout << "Actual: \t" << game->perft(i + 1) << std::endl;
       return false;
@@ -145,6 +147,7 @@ bool PerftTest3()
     if (game->perft(i + 1) != results[i])
     {
       std::cout << "Failed Perft Test 3" << std::endl;
+      std::cout << "Depth: " << i + 1 << std::endl;
       std::cout << "Expected: \t" << results[i] << std::endl;
       std::cout << "Actual: \t" << game->perft(i + 1) << std::endl;
       return false;
@@ -163,6 +166,7 @@ bool PerftTest4()
     if (game->perft(i + 1) != results[i])
     {
       std::cout << "Failed Perft Test 4" << std::endl;
+      std::cout << "Depth: " << i + 1 << std::endl;
       std::cout << "Expected: \t" << results[i] << std::endl;
       std::cout << "Actual: \t" << game->perft(i + 1) << std::endl;
       return false;
@@ -181,6 +185,7 @@ bool PerftTest5 ()
     if (game->perft(i + 1) != results[i])
     {
       std::cout << "Failed Perft Test 5" << std::endl;
+      std::cout << "Depth: " << i + 1 << std::endl;
       std::cout << "Expected: \t" << results[i] << std::endl;
       std::cout << "Actual: \t" << game->perft(i + 1) << std::endl;
       return false;
