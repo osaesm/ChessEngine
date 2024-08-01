@@ -1,4 +1,4 @@
-#include "chess.h"
+#include "chess.hpp"
 #include <iostream>
 #include <bitset>
 
@@ -108,7 +108,7 @@ void Chess::Initialize()
         {
           for (int downRight = 0; (downRight + col) < 8 && downRight <= row; ++downRight)
           {
-            for (int downLeft = 0; downLeft <= row; ++downLeft)
+            for (int downLeft = 0; downLeft <= col && downLeft <= row; ++downLeft)
             {
               int hash = (upLeft << 9) + (upRight << 6) + (downRight << 3) + downLeft;
               BISHOP_MOVES[idx][hash] = 0ULL;
@@ -414,6 +414,8 @@ std::string Chess::BoardIdx()
     board[pop_lsb(gameCopy->bKing)] = 'k';
   }
 
+  delete gameCopy;
+
   std::string boardHash = "";
   for (int rowStart = 56; rowStart >= 0; rowStart -= 8)
   {
@@ -532,102 +534,11 @@ bool Chess::InCheck(const Color kingColor, const uint64_t kingBoard)
   uint64_t oppKing = kingColor ? this->bKing : this->wKing;
 
   const uint64_t kingIdx = std::countr_zero(kingBoard);
-  for (uint64_t idx = kingIdx - 9, iMask = down_left(kingBoard); iMask; idx -= 9, iMask = down_left(iMask))
-  {
-    if (get_bit(oppBishops | oppQueens, idx) || ((idx == kingIdx - 9) && ((!kingColor && get_bit(oppPawns, idx)) || get_bit(oppKing, idx))))
-    {
-      return true;
-    }
-    if (get_bit(allPieces, idx))
-    {
-      break;
-    }
-  }
-
-  for (uint64_t idx = kingIdx - 8, iMask = down(kingBoard); iMask; idx -= 8, iMask = down(iMask))
-  {
-    if (get_bit(oppRooks | oppQueens, idx) || ((idx == kingIdx - 8) && get_bit(oppKing, idx)))
-    {
-      return true;
-    }
-    if (get_bit(allPieces, idx))
-    {
-      break;
-    }
-  }
-
-  for (uint64_t idx = kingIdx - 7, iMask = down_right(kingBoard); iMask; idx -= 7, iMask = down_right(iMask))
-  {
-    if (get_bit(oppBishops | oppQueens, idx) || ((idx == kingIdx - 7) && ((!kingColor && get_bit(oppPawns, idx)) || get_bit(oppKing, idx))))
-    {
-      return true;
-    }
-    if (get_bit(allPieces, idx))
-    {
-      break;
-    }
-  }
-
-  for (uint64_t idx = kingIdx - 1, iMask = left(kingBoard); iMask; idx -= 1, iMask = left(iMask))
-  {
-    if (get_bit(oppRooks | oppQueens, idx) || ((idx == kingIdx - 1) && get_bit(oppKing, idx)))
-    {
-      return true;
-    }
-    if (get_bit(allPieces, idx))
-    {
-      break;
-    }
-  }
-
-  for (uint64_t idx = kingIdx + 1, iMask = right(kingBoard); iMask; idx += 1, iMask = right(iMask))
-  {
-    if (get_bit(oppRooks | oppQueens, idx) || ((idx == kingIdx + 1) && get_bit(oppKing, idx)))
-    {
-      return true;
-    }
-    if (get_bit(allPieces, idx))
-    {
-      break;
-    }
-  }
-
-  for (uint64_t idx = kingIdx + 7, iMask = up_left(kingBoard); iMask; idx += 7, iMask = up_left(iMask))
-  {
-    if (get_bit(oppBishops | oppQueens, idx) || ((idx == kingIdx + 7) && ((kingColor && get_bit(oppPawns, idx)) || get_bit(oppKing, idx))))
-    {
-      return true;
-    }
-    if (get_bit(allPieces, idx))
-    {
-      break;
-    }
-  }
-
-  for (uint64_t idx = kingIdx + 8, iMask = up(kingBoard); iMask; idx += 8, iMask = up(iMask))
-  {
-    if (get_bit(oppRooks | oppQueens, idx) || ((idx == kingIdx + 8) && get_bit(oppKing, idx)))
-    {
-      return true;
-    }
-    if (get_bit(allPieces, idx))
-    {
-      break;
-    }
-  }
-
-  for (uint64_t idx = kingIdx + 9, iMask = up_right(kingBoard); iMask; idx += 9, iMask = up_right(iMask))
-  {
-    if (get_bit(oppBishops | oppQueens, idx) || ((idx == kingIdx + 9) && ((kingColor && get_bit(oppPawns, idx)) || get_bit(oppKing, idx))))
-    {
-      return true;
-    }
-    if (get_bit(allPieces, idx))
-    {
-      break;
-    }
-  }
-  return (KNIGHT_MOVES[kingIdx] & oppKnights) ? true : false;
+  return ((BISHOP_MOVES[kingIdx][BishopHash(kingIdx, ~allPieces, opponent)] & (oppBishops | oppQueens))
+   || (ROOK_MOVES[kingIdx][RookHash(kingIdx, ~allPieces, opponent)] & (oppRooks | oppQueens))
+   || (KNIGHT_MOVES[kingIdx] & oppKnights)
+   || (KING_MOVES[kingIdx] & oppKing)
+   || (PAWN_TAKES[kingIdx][kingColor ? 0 : 1] & oppPawns));
 }
 
 std::vector<Chess *> Chess::LegalMoves()
@@ -669,8 +580,6 @@ std::vector<Chess *> Chess::LegalMoves()
  * - Advances the turns between white/black
  * - Increments lastPawnOrTake unless taking or moving a pawn (lol)
  * - Slots new boardHash into occurrence vectors after executing the move
- * TODO:
- * - Figure out castling
  */
 void Chess::MovePiece(const char pieceType, const int start, const int end, uint64_t opponent)
 {
@@ -721,31 +630,28 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
     this->firstOccurrence.clear();
     this->secondOccurrence.clear();
   }
-  // If enPassantIdx != -1, we check if that's the current move, and regardless we set the enPassantIdx to -1.
-  else if (this->enPassantIdx != -1)
+  // Check if en passant capture
+  else if (this->enPassantIdx == end)
   {
-    // Check if en passant capture
-    if (this->enPassantIdx == end)
+    if (end > 32)
     {
-      if (end > 32)
-      {
-        clear_bit(this->bPawns, end - 8);
-      }
-      else
-      {
-        clear_bit(this->wPawns, end + 8);
-      }
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+      clear_bit(this->bPawns, end - 8);
     }
-    // Set en passant to -1
-    this->enPassantIdx = -1;
+    else
+    {
+      clear_bit(this->wPawns, end + 8);
+    }
+    this->firstOccurrence.clear();
+    this->secondOccurrence.clear();
   }
   // All non-capture moves
   else
   {
     ++this->lastPawnOrTake;
   }
+
+  // Set en passant to -1
+  this->enPassantIdx = -1;
 
   // Updating bitboards of the piece that's moving
   // Setting lastPawnOrTake to 0 if moving a pawn
@@ -796,29 +702,22 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
   case 'K':
     set_bit(this->wKing, end);
     clear_bit(this->wKing, start);
-    if (this->wQueenCastle)
+    if (this->wQueenCastle && (start == 4) && (end == 2))
     {
-      if (start == 4 && end == 2)
-      {
-        clear_bit(this->wRooks, 0);
-        set_bit(this->wRooks, 3);
-      }
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
-      this->wQueenCastle = false;
-      this->wCastle = false;
+      clear_bit(this->wRooks, 0);
+      set_bit(this->wRooks, 3);
     }
-    if (this->wCastle)
+    else if (this->wCastle && (start == 4) && (end == 6))
     {
-      if (start == 4 && end == 6)
-      {
-        clear_bit(this->wRooks, 7);
-        set_bit(this->wRooks, 5);
-      }
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+      clear_bit(this->wRooks, 7);
+      set_bit(this->wRooks, 5);
+    }
+    if (this->wCastle || this->wQueenCastle)
+    {
       this->wCastle = false;
       this->wQueenCastle = false;
+      this->firstOccurrence.clear();
+      this->secondOccurrence.clear();
     }
     break;
   case 'p':
@@ -863,29 +762,22 @@ void Chess::MovePiece(const char pieceType, const int start, const int end, uint
   default:
     set_bit(this->bKing, end);
     clear_bit(this->bKing, start);
-    if (this->bQueenCastle)
+    if (this->bQueenCastle && (start == 60) && (end == 58))
     {
-      if (start == 60 && end == 58)
-      {
-        clear_bit(this->bRooks, 56);
-        set_bit(this->bRooks, 59);
-      }
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
-      this->bQueenCastle = false;
-      this->bCastle = false;
+      clear_bit(this->bRooks, 56);
+      set_bit(this->bRooks, 59);
     }
-    if (this->bCastle)
+    else if (this->bCastle && (start == 60) && (end == 62))
     {
-      if (start == 60 && end == 62)
-      {
-        clear_bit(this->bRooks, 63);
-        set_bit(this->bRooks, 61);
-      }
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+      clear_bit(this->bRooks, 63);
+      set_bit(this->bRooks, 61);
+    }
+    if (this->bCastle || this->bQueenCastle)
+    {
       this->bCastle = false;
       this->bQueenCastle = false;
+      this->firstOccurrence.clear();
+      this->secondOccurrence.clear();
     }
     break;
   }
@@ -970,6 +862,8 @@ void Chess::PromotePawn(const char pieceType, const int end)
   }
   this->firstOccurrence.clear();
   this->secondOccurrence.clear();
+  std::string boardHash = this->BoardIdx();
+  this->firstOccurrence.push_back(boardHash);
 }
 
 std::vector<Chess *> Chess::PseudoLegalMoves()
@@ -989,6 +883,7 @@ uint64_t Chess::perft(int depth)
   // Base Case
   if (depth == 0)
   {
+    // std::cout << this->ConvertToFEN() << std::endl;
     return 1;
   }
 
@@ -1059,7 +954,7 @@ uint64_t Chess::perft(int depth)
     while (gameCopy.wBishops)
     {
       idx = pop_lsb(gameCopy.wBishops);
-      currMoves = BISHOP_MOVES[idx][BishopHash(idx, this->empties(), opponent)];
+      currMoves = BISHOP_MOVES[idx][BishopHash(idx, this->empties(), opponent)] & targets;
       while (currMoves)
       {
         Chess nextMoveGame(*this);
@@ -1072,7 +967,7 @@ uint64_t Chess::perft(int depth)
     while (gameCopy.wRooks)
     {
       idx = pop_lsb(gameCopy.wRooks);
-      currMoves = ROOK_MOVES[idx][RookHash(idx, this->empties(), opponent)];
+      currMoves = ROOK_MOVES[idx][RookHash(idx, this->empties(), opponent)] & targets;
       while (currMoves)
       {
         Chess nextMoveGame(*this);
@@ -1085,7 +980,7 @@ uint64_t Chess::perft(int depth)
     while (gameCopy.wQueens)
     {
       idx = pop_lsb(gameCopy.wQueens);
-      currMoves = QUEEN_MOVES[idx][QueenHash(idx, this->empties(), opponent)];
+      currMoves = QUEEN_MOVES[idx][QueenHash(idx, this->empties(), opponent)] & targets;
       while (currMoves)
       {
         Chess nextMoveGame(*this);
@@ -1171,7 +1066,7 @@ uint64_t Chess::perft(int depth)
     while (gameCopy.bBishops)
     {
       idx = pop_lsb(gameCopy.bBishops);
-      currMoves = BISHOP_MOVES[idx][BishopHash(idx, this->empties(), opponent)];
+      currMoves = BISHOP_MOVES[idx][BishopHash(idx, this->empties(), opponent)] & targets;
       while (currMoves)
       {
         Chess nextMoveGame(*this);
@@ -1184,7 +1079,7 @@ uint64_t Chess::perft(int depth)
     while (gameCopy.bRooks)
     {
       idx = pop_lsb(gameCopy.bRooks);
-      currMoves = ROOK_MOVES[idx][RookHash(idx, this->empties(), opponent)];
+      currMoves = ROOK_MOVES[idx][RookHash(idx, this->empties(), opponent)] & targets;
       while (currMoves)
       {
         Chess nextMoveGame(*this);
@@ -1197,7 +1092,7 @@ uint64_t Chess::perft(int depth)
     while (gameCopy.bQueens)
     {
       idx = pop_lsb(gameCopy.bQueens);
-      currMoves = QUEEN_MOVES[idx][QueenHash(idx, this->empties(), opponent)];
+      currMoves = QUEEN_MOVES[idx][QueenHash(idx, this->empties(), opponent)] & targets;
       while (currMoves)
       {
         Chess nextMoveGame(*this);
@@ -1222,7 +1117,7 @@ uint64_t Chess::perft(int depth)
       nextMoveGame.MovePiece('k', 60, 62, opponent);
       nodes += nextMoveGame.perft(depth - 1);
     }
-    if (this->wQueenCastle && ((this->empties() & 0xE00000000000000ULL) == 0xE00000000000000ULL) && !this->InCheck(Color::BLACK, this->bKing) && !this->InCheck(Color::BLACK, left(this->bKing)) && !this->InCheck(Color::BLACK, left(left(this->bKing))))
+    if (this->bQueenCastle && ((this->empties() & 0xE00000000000000ULL) == 0xE00000000000000ULL) && !this->InCheck(Color::BLACK, this->bKing) && !this->InCheck(Color::BLACK, left(this->bKing)) && !this->InCheck(Color::BLACK, left(left(this->bKing))))
     {
       Chess nextMoveGame(*this);
       nextMoveGame.MovePiece('k', 60, 58, opponent);

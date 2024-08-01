@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-#include "chess.h"
+#include "chess.hpp"
 
 bool FenTest1()
 {
@@ -16,6 +16,7 @@ bool FenTest1()
     std::cout << "Actual: \t\t" << result << std::endl;
     return false;
   }
+  delete game;
   return true;
 }
 
@@ -31,6 +32,7 @@ bool FenTest2()
     std::cout << "Actual: \t\t" << result << std::endl;
     return false;
   }
+  delete game;
   return true;
 }
 
@@ -46,6 +48,7 @@ bool FenTest3()
     std::cout << "Actual: \t\t" << result << std::endl;
     return false;
   }
+  delete game;
   return true;
 }
 
@@ -61,6 +64,7 @@ bool FenTest4()
     std::cout << "Actual: \t\t" << result << std::endl;
     return false;
   }
+  delete game;
   return true;
 }
 
@@ -76,6 +80,7 @@ bool FenTest5()
     std::cout << "Actual: \t\t" << result << std::endl;
     return false;
   }
+  delete game;
   return true;
 }
 
@@ -92,8 +97,9 @@ void FenConversionTests()
   };
   for (auto x : tests)
   {
-    if (x)
+    if (x) {
       ++passedTests;
+    }
   }
 
   std::cout << "Fen Conversion Results: \t" << passedTests << " / " << tests.size() << std::endl;
@@ -104,36 +110,42 @@ bool PerftTest1()
   std::string fenString = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0";
   Chess *game = new Chess(fenString);
   long results[6] = {20, 400, 8902, 197281, 4865609, 119060324};
-  for (int i = 0; i < 6; ++i)
+  long actual = 0;
+  for (int i = 0; i < sizeof(results) / sizeof(results[0]); ++i)
   {
-    if (game->perft(i + 1) != results[i])
+    actual = game->perft(i + 1);
+    if (actual != results[i])
     {
       std::cout << "Failed Perft Test 1" << std::endl;
       std::cout << "Depth: " << i + 1 << std::endl;
       std::cout << "Expected: \t" << results[i] << std::endl;
-      std::cout << "Actual: \t" << game->perft(i + 1) << std::endl;
+      std::cout << "Actual: \t" << actual << std::endl;
       return false;
     }
   }
+  delete game;
   return true;
 }
 
 bool PerftTest2()
 {
-  std::string fenString = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+  std::string fenString = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0";
   Chess *game = new Chess(fenString);
   long results[6] = {48, 2039, 97862, 4085603, 193690690, 8031647685};
-  for (int i = 0; i < 6; ++i)
+  long actual = 0;
+  for (int i = 0; i < sizeof(results) / sizeof(results[0]); ++i)
   {
-    if (game->perft(i + 1) != results[i])
+    actual = game->perft(i + 1);
+    if (actual != results[i])
     {
       std::cout << "Failed Perft Test 2" << std::endl;
       std::cout << "Depth: " << i + 1 << std::endl;
       std::cout << "Expected: \t" << results[i] << std::endl;
-      std::cout << "Actual: \t" << game->perft(i + 1) << std::endl;
+      std::cout << "Actual: \t" << actual << std::endl;
       return false;
     }
   }
+  delete game;
   return true;
 }
 
@@ -142,17 +154,20 @@ bool PerftTest3()
   std::string fenString = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 0";
   Chess *game = new Chess(fenString);
   long results[6] = {14, 191, 2812, 43238, 674624, 11030083};
-  for (int i = 0; i < 6; ++i)
+  long actual = 0;
+  for (int i = 0; i < sizeof(results) / sizeof(results[0]); ++i)
   {
-    if (game->perft(i + 1) != results[i])
+    actual = game->perft(i + 1);
+    if (actual != results[i])
     {
       std::cout << "Failed Perft Test 3" << std::endl;
       std::cout << "Depth: " << i + 1 << std::endl;
       std::cout << "Expected: \t" << results[i] << std::endl;
-      std::cout << "Actual: \t" << game->perft(i + 1) << std::endl;
+      std::cout << "Actual: \t" << actual << std::endl;
       return false;
     }
   }
+  delete game;
   return true;
 }
 
@@ -161,17 +176,20 @@ bool PerftTest4()
   std::string fenString = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
   Chess *game = new Chess(fenString);
   long results[6] = {6, 264, 9467, 422333, 15833292, 706045033};
-  for (int i = 0; i < 6; ++i)
+  long actual = 0;
+  for (int i = 0; i < sizeof(results) / sizeof(results[0]); ++i)
   {
-    if (game->perft(i + 1) != results[i])
+    actual = game->perft(i + 1);
+    if (actual != results[i])
     {
       std::cout << "Failed Perft Test 4" << std::endl;
       std::cout << "Depth: " << i + 1 << std::endl;
       std::cout << "Expected: \t" << results[i] << std::endl;
-      std::cout << "Actual: \t" << game->perft(i + 1) << std::endl;
+      std::cout << "Actual: \t" << actual << std::endl;
       return false;
     }
   }
+  delete game;
   return true;
 }
 
@@ -180,17 +198,20 @@ bool PerftTest5 ()
   std::string fenString = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
   Chess *game = new Chess(fenString);
   long results[5] = {44, 1486, 62379, 2103487, 89941194};
-  for (int i = 0; i < 5; ++i)
+  long actual = 0;
+  for (int i = 0; i < sizeof(results) / sizeof(results[0]); ++i)
   {
-    if (game->perft(i + 1) != results[i])
+    actual = game->perft(i + 1);
+    if (actual != results[i])
     {
       std::cout << "Failed Perft Test 5" << std::endl;
       std::cout << "Depth: " << i + 1 << std::endl;
       std::cout << "Expected: \t" << results[i] << std::endl;
-      std::cout << "Actual: \t" << game->perft(i + 1) << std::endl;
+      std::cout << "Actual: \t" << actual << std::endl;
       return false;
     }
   }
+  delete game;
   return true;
 }
 
