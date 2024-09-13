@@ -10,14 +10,14 @@ uint64_t Chess::KNIGHT_MOVES[64] = {};
 // Presaved king moves
 uint64_t Chess::KING_MOVES[64] = {};
 // Hashed Bishop moves
-ankerl::unordered_dense::map<int, uint64_t> Chess::BISHOP_MOVES[64] = {};
+uint64_t Chess::BISHOP_MOVES[64][4096] = {};
 // Hashed Rook moves
-ankerl::unordered_dense::map<int, uint64_t> Chess::ROOK_MOVES[64] = {};
+uint64_t Chess::ROOK_MOVES[64][4096] = {};
 // Hash Queen moves
-ankerl::unordered_dense::map<int, uint64_t> Chess::QUEEN_MOVES[64] = {};
+uint64_t Chess::QUEEN_MOVES[64][4096*4096] = {};
 char Chess::promotions[4] = {'q', 'r', 'n', 'b'};
 
-// Hard-coded sliding piece moves
+// Hard-coded piece moves
 void Chess::Initialize()
 {
   // Initialize the sliding piece static boards
@@ -135,16 +135,16 @@ void Chess::Initialize()
     }
   }
   // Initialize pawn, knight, king moves
-  for (uint64_t i = 0, idx = 1; i < 64; ++i, idx <<= 1)
+  for (uint64_t i = 0, iMask = 1; i < 64; ++i, iMask <<= 1)
   {
     PAWN_TAKES[i][0] = 0ULL;
-    PAWN_TAKES[i][0] = up_left(idx) | up_right(idx);
+    PAWN_TAKES[i][0] = up_left(iMask) | up_right(iMask);
     PAWN_TAKES[i][1] = 0ULL;
-    PAWN_TAKES[i][1] = down_left(idx) | down_right(idx);
+    PAWN_TAKES[i][1] = down_left(iMask) | down_right(iMask);
     KNIGHT_MOVES[i] = 0ULL;
-    KNIGHT_MOVES[i] = down(down_left(idx)) | down(down_right(idx)) | left(down_left(idx)) | right(down_right(idx)) | up(up_left(idx)) | up(up_right(idx)) | left(up_left(idx)) | right(up_right(idx));
+    KNIGHT_MOVES[i] = down(down_left(iMask)) | down(down_right(iMask)) | left(down_left(iMask)) | right(down_right(iMask)) | up(up_left(iMask)) | up(up_right(iMask)) | left(up_left(iMask)) | right(up_right(iMask));
     KING_MOVES[i] = 0ULL;
-    KING_MOVES[i] = down_left(idx) | down(idx) | down_right(idx) | left(idx) | right(idx) | up_left(idx) | up(idx) | up_right(idx);
+    KING_MOVES[i] = down_left(iMask) | down(iMask) | down_right(iMask) | left(iMask) | right(iMask) | up_left(iMask) | up(iMask) | up_right(iMask);
   }
 }
 
@@ -513,7 +513,6 @@ std::string Chess::BoardIdx()
       break;
     }
   }
-
   return boardHash;
 }
 

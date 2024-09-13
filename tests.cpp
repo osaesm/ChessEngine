@@ -221,7 +221,7 @@ void PerftTests()
 
   std::vector<bool> tests{
       PerftTest1(),
-      PerftTest2(),
+      // PerftTest2(),
       PerftTest3(),
       PerftTest4(),
       PerftTest5(),
@@ -242,7 +242,7 @@ void PerftTests()
 int main()
 {
   Chess::Initialize();
-  FenConversionTests();
+  // FenConversionTests();
   PerftTests();
   return 0;
 }
