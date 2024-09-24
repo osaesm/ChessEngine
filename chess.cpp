@@ -14,7 +14,7 @@ uint64_t Chess::BISHOP_MOVES[64][4096] = {};
 // Hashed Rook moves
 uint64_t Chess::ROOK_MOVES[64][4096] = {};
 // Hash Queen moves
-uint64_t Chess::QUEEN_MOVES[64][4096*4096] = {};
+uint64_t Chess::QUEEN_MOVES[64][4096 * 4096] = {};
 char Chess::promotions[4] = {'q', 'r', 'n', 'b'};
 
 // Hard-coded piece moves
@@ -521,9 +521,9 @@ std::string Chess::ConvertToFEN()
   return this->BoardIdx() + " " + std::to_string(this->lastPawnOrTake) + " " + std::to_string(this->fullTurns);
 }
 
-bool Chess::InCheck(const Color kingColor, const uint64_t kingBoard)
+Chess::Move::Check Chess::InChecks(const Color kingColor, const uint64_t kingBoard)
 {
-  uint64_t allPieces = (this->whites() | this->blacks()) ^ (kingColor ? this->wKing : this->bKing);
+  uint64_t allPieces = (this->whites() | this->blacks() | kingBoard) & ~(kingColor ? this->wKing : this->bKing);
   uint64_t opponent = kingColor ? this->blacks() : this->whites();
   uint64_t oppRooks = kingColor ? this->bRooks : this->wRooks;
   uint64_t oppBishops = kingColor ? this->bBishops : this->wBishops;
@@ -533,11 +533,25 @@ bool Chess::InCheck(const Color kingColor, const uint64_t kingBoard)
   uint64_t oppKing = kingColor ? this->bKing : this->wKing;
 
   const uint64_t kingIdx = std::countr_zero(kingBoard);
-  return ((BISHOP_MOVES[kingIdx][BishopHash(kingIdx, ~allPieces, opponent)] & (oppBishops | oppQueens))
-   || (ROOK_MOVES[kingIdx][RookHash(kingIdx, ~allPieces, opponent)] & (oppRooks | oppQueens))
-   || (KNIGHT_MOVES[kingIdx] & oppKnights)
-   || (KING_MOVES[kingIdx] & oppKing)
-   || (PAWN_TAKES[kingIdx][kingColor ? 0 : 1] & oppPawns));
+  uint64_t checkMasks[5] = {
+    (BISHOP_MOVES[kingIdx][BishopHash(kingIdx, ~allPieces, opponent)] & (oppBishops | oppQueens)),
+    (ROOK_MOVES[kingIdx][RookHash(kingIdx, ~allPieces, opponent)] & (oppRooks | oppQueens)),
+    (KNIGHT_MOVES[kingIdx] & oppKnights),
+    (KING_MOVES[kingIdx] & oppKing),
+    (PAWN_TAKES[kingIdx][kingColor ? 0 : 1] & oppPawns)
+  };
+  Move::Check checkType = Move::Check::NO_CHECK;
+  for (int i = 0; i < 5; ++i) {
+    while (checkMasks[i]) {
+      pop_lsb(checkMasks[i]);
+      if (checkType == Move::Check::NO_CHECK) {
+        checkType = Move::Check::CHECK;
+      } else if (checkType == Move::Check::CHECK) {
+        return Move::Check::DOUBLE_CHECK;
+      }
+    }
+  }
+  return checkType;
 }
 
 std::vector<Chess *> Chess::LegalMoves()
@@ -566,303 +580,221 @@ std::vector<Chess *> Chess::LegalMoves()
   return legalMoves;
 }
 
-/**
- * This function:
- * - Checks for normal capture
- * - Then checks for en passant capture
- * - Updates bitboards
- * - Updates enPassantIdx to -1 unless moving a pawn 2 squares
- * - Updates castling rights when moving a rook or king
- * - Updates castling rights when a rook is captured
- * - Resets firstOccurrence / secondOccurrence with irreversible moves (ie pawn move or capture)
- * - Increments fullTurns when black moves
- * - Advances the turns between white/black
- * - Increments lastPawnOrTake unless taking or moving a pawn (lol)
- * - Slots new boardHash into occurrence vectors after executing the move
- */
-void Chess::MovePiece(const char pieceType, const int start, const int end, uint64_t opponent)
+// We need to
+// * Determine the kind of check
+void Chess::MakeMove(Move &m)
 {
-  // If we take (not en passant), set opponent bit to 0 and lastPawnOrTake to 0
-  if (get_bit(opponent, end))
+  // Clear start square and fill end square
+  // Promote Pawns
+  // Castle
+  // Update Castling Rights
+  switch (m.pieceType)
   {
-    clear_bit(opponent, end);
-    this->lastPawnOrTake = 0;
-    // Updating the other colors to remove the taken piece
-    if (this->turn)
-    {
-      clear_bit(this->bPawns, end);
-      clear_bit(this->bKnights, end);
-      clear_bit(this->bBishops, end);
-      clear_bit(this->bRooks, end);
-      clear_bit(this->bQueens, end);
-      // do we need to clear the bKing?
-      clear_bit(this->bKing, end);
-      // Updating castling rights when taking rooks
-      if (this->bCastle && end == 63)
-      {
-        this->bCastle = false;
-      }
-      else if (this->bQueenCastle && end == 56)
-      {
-        this->bQueenCastle = false;
-      }
+  case Move::Piece::W_PAWN:
+    clear_bit(this->wPawns, m.start);
+    switch(m.promotionType) {
+      case Move::Promotion::QUEEN:
+        set_bit(this->wQueens, m.end);
+        break;
+      case Move::Promotion::ROOK:
+        set_bit(this->wRooks, m.end);
+        break;
+      case Move::Promotion::KNIGHT:
+        set_bit(this->wKnights, m.end);
+        break;
+      case Move::Promotion::BISHOP:
+        set_bit(this->wBishops, m.end);
+        break;
+      default:
+        set_bit(this->wPawns, m.end);
+        break;
     }
-    else
-    {
-      clear_bit(this->wPawns, end);
-      clear_bit(this->wKnights, end);
-      clear_bit(this->wBishops, end);
-      clear_bit(this->wRooks, end);
-      clear_bit(this->wQueens, end);
-      // do we need to clear the wKing?
-      clear_bit(this->wKing, end);
-      // Updating castling rights when taking rooks
-      if (this->wCastle && end == 7)
-      {
-        this->wCastle = false;
-      }
-      else if (this->wQueenCastle && end == 0)
-      {
-        this->wQueenCastle = false;
-      }
-    }
-    this->firstOccurrence.clear();
-    this->secondOccurrence.clear();
-  }
-  // Check if en passant capture
-  else if (this->enPassantIdx == end)
-  {
-    if (end > 32)
-    {
-      clear_bit(this->bPawns, end - 8);
-    }
-    else
-    {
-      clear_bit(this->wPawns, end + 8);
-    }
-    this->firstOccurrence.clear();
-    this->secondOccurrence.clear();
-  }
-  // All non-capture moves
-  else
-  {
-    ++this->lastPawnOrTake;
-  }
-
-  // Set en passant to -1
-  this->enPassantIdx = -1;
-
-  // Updating bitboards of the piece that's moving
-  // Setting lastPawnOrTake to 0 if moving a pawn
-  // Updating castling variables when moving rooks / kings
-  // Updating enPassantIdx if moving a pawn two squares
-  // Resetting firstOccurrence / secondOccurrence with pawn moves, captures, and castling (irreversible)
-  switch (pieceType)
-  {
-  case 'P':
-    set_bit(this->wPawns, end);
-    clear_bit(this->wPawns, start);
-    this->lastPawnOrTake = 0;
-    if (end - start == 16)
-    {
-      this->enPassantIdx = start + 8;
-    }
-    this->firstOccurrence.clear();
-    this->secondOccurrence.clear();
     break;
-  case 'N':
-    set_bit(this->wKnights, end);
-    clear_bit(this->wKnights, start);
+  case Move::Piece::W_KNIGHT:
+    clear_bit(this->wKnights, m.start);
+    set_bit(this->wKnights, m.end);
     break;
-  case 'B':
-    set_bit(this->wBishops, end);
-    clear_bit(this->wBishops, start);
+  case Move::Piece::W_BISHOP:
+    clear_bit(this->wBishops, m.start);
+    set_bit(this->wBishops, m.end);
     break;
-  case 'R':
-    set_bit(this->wRooks, end);
-    clear_bit(this->wRooks, start);
-    if (this->wQueenCastle && (start == 0))
-    {
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+  case Move::Piece::W_ROOK:
+    clear_bit(this->wRooks, m.start);
+    set_bit(this->wRooks, m.end);
+    // Castling rights
+    if (this->wCastle && m.start == 7) {
+      this->wCastle = false;
+    } else if (this->wQueenCastle && m.start == 0) {
       this->wQueenCastle = false;
     }
-    else if (this->wCastle && (start == 7))
-    {
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+    break;
+  case Move::Piece::W_QUEEN:
+    clear_bit(this->wQueens, m.start);
+    set_bit(this->wQueens, m.end);
+    break;
+  case Move::Piece::W_KING:
+    clear_bit(this->wKing, m.start);
+    set_bit(this->wKing, m.end);
+    if (this->wCastle) {
       this->wCastle = false;
     }
-    break;
-  case 'Q':
-    set_bit(this->wQueens, end);
-    clear_bit(this->wQueens, start);
-    break;
-  case 'K':
-    set_bit(this->wKing, end);
-    clear_bit(this->wKing, start);
-    if (this->wQueenCastle && (start == 4) && (end == 2))
-    {
+    if (this->wQueenCastle) {
+      this->wQueenCastle = false;
+    }
+    if (m.start == 4 && m.end == 6) {
+      clear_bit(this->wRooks, 7);
+      set_bit(this->wRooks, 5);
+    } else if (m.start == 4 && m.end == 2) {
       clear_bit(this->wRooks, 0);
       set_bit(this->wRooks, 3);
     }
-    else if (this->wCastle && (start == 4) && (end == 6))
-    {
-      clear_bit(this->wRooks, 7);
-      set_bit(this->wRooks, 5);
+    break;
+  case Move::Piece::B_PAWN:
+    clear_bit(this->bPawns, m.start);
+    switch(m.promotionType) {
+      case Move::Promotion::QUEEN:
+        set_bit(this->bQueens, m.end);
+        break;
+      case Move::Promotion::ROOK:
+        set_bit(this->bRooks, m.end);
+        break;
+      case Move::Promotion::KNIGHT:
+        set_bit(this->bKnights, m.end);
+        break;
+      case Move::Promotion::BISHOP:
+        set_bit(this->bBishops, m.end);
+        break;
+      default:
+        set_bit(this->bPawns, m.end);
+        break;
     }
-    if (this->wCastle || this->wQueenCastle)
-    {
-      this->wCastle = false;
-      this->wQueenCastle = false;
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
-    }
     break;
-  case 'p':
-    set_bit(this->bPawns, end);
-    clear_bit(this->bPawns, start);
-    this->lastPawnOrTake = 0;
-    if (start - end == 16)
-    {
-      this->enPassantIdx = start - 8;
-    }
-    this->firstOccurrence.clear();
-    this->secondOccurrence.clear();
+  case Move::Piece::B_KNIGHT:
+    clear_bit(this->bKnights, m.start);
+    set_bit(this->bKnights, m.end);
     break;
-  case 'n':
-    set_bit(this->bKnights, end);
-    clear_bit(this->bKnights, start);
+  case Move::Piece::B_BISHOP:
+    clear_bit(this->bBishops, m.start);
+    set_bit(this->bBishops, m.end);
     break;
-  case 'b':
-    set_bit(this->bBishops, end);
-    clear_bit(this->bBishops, start);
-    break;
-  case 'r':
-    set_bit(this->bRooks, end);
-    clear_bit(this->bRooks, start);
-    if (this->bQueenCastle && (start == 56))
-    {
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+  case Move::Piece::B_ROOK:
+    clear_bit(this->bRooks, m.start);
+    set_bit(this->bRooks, m.end);
+    if (this->bCastle && m.start == 63) {
+      this->bCastle = false;
+    } else if (this->bQueenCastle && m.start == 56) {
       this->bQueenCastle = false;
     }
-    else if (this->bCastle && (start == 63))
-    {
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+    break;
+  case Move::Piece::B_QUEEN:
+    clear_bit(this->bQueens, m.start);
+    set_bit(this->bQueens, m.end);
+    break;
+  case Move::Piece::B_KING:
+    clear_bit(this->bKing, m.start);
+    set_bit(this->bKing, m.end);
+    if (this->bCastle) {
       this->bCastle = false;
     }
-    break;
-  case 'q':
-    set_bit(this->bQueens, end);
-    clear_bit(this->bQueens, start);
-    break;
-  default:
-    set_bit(this->bKing, end);
-    clear_bit(this->bKing, start);
-    if (this->bQueenCastle && (start == 60) && (end == 58))
-    {
+    if (this->bQueenCastle) {
+      this->bQueenCastle = false;
+    }
+    if (m.start == 60 && m.end == 62) {
+      clear_bit(this->bRooks, 63);
+      set_bit(this->bRooks, 61);
+    } else if (m.start == 60 && m.end == 58) {
       clear_bit(this->bRooks, 56);
       set_bit(this->bRooks, 59);
     }
-    else if (this->bCastle && (start == 60) && (end == 62))
-    {
-      clear_bit(this->bRooks, 63);
-      set_bit(this->bRooks, 61);
-    }
-    if (this->bCastle || this->bQueenCastle)
-    {
-      this->bCastle = false;
-      this->bQueenCastle = false;
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
-    }
+    break;
+  default:
     break;
   }
 
-  // Incrementing Full Turns
-  if (this->turn == Color::BLACK)
+  // Empty captured squares
+  if (m.enPassant)
   {
-    ++this->fullTurns;
-  }
-
-  // Advance Turn
-  this->turn = (Color) !this->turn;
-
-  std::string boardHash = this->BoardIdx();
-  // Updating firstOccurrence / secondOccurrence
-  for (const auto &x : this->firstOccurrence)
-  {
-    if (!boardHash.compare(x))
+    if (m.pieceType == Move::Piece::W_PAWN)
     {
-      for (const auto &y : this->secondOccurrence)
-      {
-        if (!boardHash.compare(y))
-        {
-          this->thirdOccurrence = true;
-          return;
-        }
-      }
-      this->secondOccurrence.push_back(boardHash);
-      return;
+      clear_bit(this->bPawns, m.end - 8);
+    }
+    else
+    {
+      clear_bit(this->wPawns, m.end + 8);
     }
   }
-  this->firstOccurrence.push_back(boardHash);
-  return;
-}
-
-/**
- * This function:
- * - Updates the appropriate pawn bitboard
- * - Updates the promotion choice bitboard
- */
-void Chess::PromotePawn(const char pieceType, const int end)
-{
-  if (end > 8)
+  else if (m.pieceType < Move::Piece::B_PAWN)
   {
-    // White Pawn
-    clear_bit(this->wPawns, end);
-    switch (pieceType)
+    if (get_bit(this->bPawns, m.end))
     {
-    case 'q':
-      set_bit(this->wQueens, end);
-      break;
-    case 'r':
-      set_bit(this->wRooks, end);
-      break;
-    case 'n':
-      set_bit(this->wKnights, end);
-      break;
-    default:
-      set_bit(this->wBishops, end);
-      break;
+      m.captureType = Move::Piece::B_PAWN;
+      clear_bit(this->bPawns, m.end);
+    }
+    else if (get_bit(this->bKnights, m.end))
+    {
+      m.captureType = Move::Piece::B_KNIGHT;
+      clear_bit(this->bKnights, m.end);
+    }
+    else if (get_bit(this->bBishops, m.end))
+    {
+      m.captureType = Move::Piece::B_BISHOP;
+      clear_bit(this->bBishops, m.end);
+    }
+    else if (get_bit(this->bRooks, m.end))
+    {
+      m.captureType = Move::Piece::B_ROOK;
+      clear_bit(this->bRooks, m.end);
+    }
+    else if (get_bit(this->bQueens, m.end))
+    {
+      m.captureType = Move::Piece::B_QUEEN;
+      clear_bit(this->bQueens, m.end);
+    }
+    else if (get_bit(this->bKing, m.end))
+    {
+      m.captureType = Move::Piece::B_KING;
+      clear_bit(this->bKing, m.end);
     }
   }
   else
   {
-    // Black Pawn
-    clear_bit(this->bPawns, end);
-    switch (pieceType)
+    if (get_bit(this->wPawns, m.end))
     {
-    case 'q':
-      set_bit(this->bQueens, end);
-      break;
-    case 'r':
-      set_bit(this->bRooks, end);
-      break;
-    case 'n':
-      set_bit(this->bKnights, end);
-      break;
-    default:
-      set_bit(this->bBishops, end);
-      break;
+      m.captureType = Move::Piece::W_PAWN;
+      clear_bit(this->wPawns, m.end);
+    }
+    else if (get_bit(this->wKnights, m.end))
+    {
+      m.captureType = Move::Piece::W_KNIGHT;
+      clear_bit(this->wKnights, m.end);
+    }
+    else if (get_bit(this->wBishops, m.end))
+    {
+      m.captureType = Move::Piece::W_BISHOP;
+      clear_bit(this->wBishops, m.end);
+    }
+    else if (get_bit(this->wRooks, m.end))
+    {
+      m.captureType = Move::Piece::W_ROOK;
+      clear_bit(this->wRooks, m.end);
+    }
+    else if (get_bit(this->wQueens, m.end))
+    {
+      m.captureType = Move::Piece::W_QUEEN;
+      clear_bit(this->wQueens, m.end);
+    }
+    else if (get_bit(this->wKing, m.end))
+    {
+      m.captureType = Move::Piece::W_KING;
+      clear_bit(this->wKing, m.end);
     }
   }
-  this->firstOccurrence.clear();
-  this->secondOccurrence.clear();
-  std::string boardHash = this->BoardIdx();
-  this->firstOccurrence.push_back(boardHash);
+  if (m.pieceType < Move::Piece::B_PAWN) {
+    m.checkType = this->InChecks(Color::BLACK, this->bKing);
+  }
+  else {
+    m.checkType = this->InChecks(Color::WHITE, this->wKing);
+  }
 }
 
 std::vector<Chess *> Chess::PseudoLegalMoves()
@@ -886,7 +818,8 @@ uint64_t Chess::perft(int depth)
     return 1;
   }
 
-  if (this->thirdOccurrence) {
+  if (this->thirdOccurrence)
+  {
     return 0;
   }
 
@@ -898,6 +831,7 @@ uint64_t Chess::perft(int depth)
   int idx = -1;
   uint64_t currMoves = 0ULL;
   uint64_t enPassantMask = this->enPassantIdx == -1 ? 0ULL : (1ULL << this->enPassantIdx);
+  const BoardState bs(this->wCastle, this->wQueenCastle, this->bCastle, this->bQueenCastle, this->enPassantIdx, this->lastPawnOrTake, this->fullTurns, this->firstOccurrence, this->secondOccurrence, this->thirdOccurrence);
   if (this->turn)
   {
 
@@ -916,9 +850,14 @@ uint64_t Chess::perft(int depth)
       // Non-promotion moves
       while (currMoves & ~RANK_8)
       {
-        Chess nextMoveGame(*this);
-        nextMoveGame.MovePiece('P', idx, pop_lsb(currMoves), opponent);
-        nodes += nextMoveGame.perft(depth - 1);
+        int end = pop_lsb(currMoves);
+        Move m(idx, end, end == this->enPassantIdx, Move::Piece::W_PAWN, Move::Promotion::NONE);
+        this->MakeMove(m);
+        nodes += this->perft(depth - 1);
+        this->UnMakeMove(m, bs);
+        // Chess nextMoveGame(*this);
+        // nextMoveGame.MovePiece('P', idx, pop_lsb(currMoves), opponent);
+        // nodes += nextMoveGame.perft(depth - 1);
       }
       // Promotion moves
       while (currMoves)

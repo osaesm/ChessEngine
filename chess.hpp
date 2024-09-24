@@ -194,6 +194,48 @@ protected:
   constexpr uint64_t empties() { return ~(whites() | blacks()); };
 
 public:
+  struct Move {
+    int start, end;
+    bool enPassant;
+    enum Check {
+      DOUBLE_CHECK,
+      CHECK,
+      NO_CHECK,
+    } checkType;
+    enum Piece {
+      W_PAWN,
+      W_KNIGHT,
+      W_BISHOP,
+      W_ROOK,
+      W_QUEEN,
+      W_KING,
+      B_PAWN,
+      B_KNIGHT,
+      B_BISHOP,
+      B_ROOK,
+      B_QUEEN,
+      B_KING,
+      NONE // for captures
+    } pieceType;
+    Piece captureType;
+    enum Promotion {
+      QUEEN,
+      ROOK,
+      KNIGHT,
+      BISHOP,
+      NONE
+    } promotionType;
+    Move(int s, int e, bool eP, Piece pT, Promotion prT) : start(s), end(e), checkType(NO_CHECK), pieceType(pT), captureType(NONE), promotionType(prT) {};
+  };
+  struct BoardState {
+    bool wCastle, wQueenCastle, bCastle, bQueenCastle;
+    int enPassantIdx;
+    short lastPawnOrTake;
+    int fullTurns;
+    std::vector<std::string> firstOccurrence, secondOccurrence;
+    bool thirdOccurrence;
+    BoardState(bool wC, bool wQC, bool bC, bool bQC, int ePI, short lPOT, int fT, std::vector<std::string>& fO, std::vector<std::string>& sO, bool tO) : wCastle(wC), wQueenCastle(wQC), bCastle(bC), bQueenCastle(bQC), enPassantIdx(ePI), lastPawnOrTake(lPOT), fullTurns(fT), firstOccurrence(fO), secondOccurrence(sO), thirdOccurrence(tO) {}; 
+  };
   Chess(const std::string &fenString);
   Chess(const Chess &x);
   static void Initialize();
@@ -201,9 +243,11 @@ public:
   std::string ConvertToFEN();
   std::vector<Chess *> LegalMoves();
   std::vector<Chess *> PseudoLegalMoves();
-  bool InCheck(const Color kingColor, const uint64_t kingIdx);
-  void MovePiece(const char pieceType, const int start, const int end, uint64_t opponent);
-  void PromotePawn(const char pieceType, const int end);
+  Move::Check InChecks(const Color kingColor, const uint64_t kingBoard);
+  void MakeMove(Move &m);
+  void UnMakeMove(const Move &m, const BoardState &bs);
+  // void MovePiece(const char pieceType, const int start, const int end, uint64_t opponent);
+  // void PromotePawn(const char pieceType, const int end);
   uint64_t perft(int depth);
 };
 

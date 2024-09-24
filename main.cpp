@@ -4,9 +4,7 @@
 
 /**
  * TODO:
- * - Benchmark some perft stuff before and after
- * - Maybe try storing positions with int array instead of FEN? (12 piece types * 64 squares + 4 castling rights + 1 enpassantsquare + 1 turnColor = 774)
- * - First, try replacing premove dictionaries with arrays and see what that does
+ * - First, try replacing premove dictionaries with arrays and see what that does (12% speedup; 27->24 sec)
  * - No precomputed Rook/Queen/Bishop moves for now
  * - Maybe remove pawn/knight/king precomputed moves
  * - Create Move class so moves can be done & undone on the same object
