@@ -534,19 +534,23 @@ Chess::Move::Check Chess::InChecks(const Color kingColor, const uint64_t kingBoa
 
   const uint64_t kingIdx = std::countr_zero(kingBoard);
   uint64_t checkMasks[5] = {
-    (BISHOP_MOVES[kingIdx][BishopHash(kingIdx, ~allPieces, opponent)] & (oppBishops | oppQueens)),
-    (ROOK_MOVES[kingIdx][RookHash(kingIdx, ~allPieces, opponent)] & (oppRooks | oppQueens)),
-    (KNIGHT_MOVES[kingIdx] & oppKnights),
-    (KING_MOVES[kingIdx] & oppKing),
-    (PAWN_TAKES[kingIdx][kingColor ? 0 : 1] & oppPawns)
-  };
+      (BISHOP_MOVES[kingIdx][BishopHash(kingIdx, ~allPieces, opponent)] & (oppBishops | oppQueens)),
+      (ROOK_MOVES[kingIdx][RookHash(kingIdx, ~allPieces, opponent)] & (oppRooks | oppQueens)),
+      (KNIGHT_MOVES[kingIdx] & oppKnights),
+      (KING_MOVES[kingIdx] & oppKing),
+      (PAWN_TAKES[kingIdx][kingColor ? 0 : 1] & oppPawns)};
   Move::Check checkType = Move::Check::NO_CHECK;
-  for (int i = 0; i < 5; ++i) {
-    while (checkMasks[i]) {
+  for (int i = 0; i < 5; ++i)
+  {
+    while (checkMasks[i])
+    {
       pop_lsb(checkMasks[i]);
-      if (checkType == Move::Check::NO_CHECK) {
+      if (checkType == Move::Check::NO_CHECK)
+      {
         checkType = Move::Check::CHECK;
-      } else if (checkType == Move::Check::CHECK) {
+      }
+      else if (checkType == Move::Check::CHECK)
+      {
         return Move::Check::DOUBLE_CHECK;
       }
     }
@@ -580,8 +584,6 @@ std::vector<Chess *> Chess::LegalMoves()
   return legalMoves;
 }
 
-// We need to
-// * Determine the kind of check
 void Chess::MakeMove(Move &m)
 {
   // Clear start square and fill end square
@@ -592,22 +594,23 @@ void Chess::MakeMove(Move &m)
   {
   case Move::Piece::W_PAWN:
     clear_bit(this->wPawns, m.start);
-    switch(m.promotionType) {
-      case Move::Promotion::QUEEN:
-        set_bit(this->wQueens, m.end);
-        break;
-      case Move::Promotion::ROOK:
-        set_bit(this->wRooks, m.end);
-        break;
-      case Move::Promotion::KNIGHT:
-        set_bit(this->wKnights, m.end);
-        break;
-      case Move::Promotion::BISHOP:
-        set_bit(this->wBishops, m.end);
-        break;
-      default:
-        set_bit(this->wPawns, m.end);
-        break;
+    switch (m.promotionType)
+    {
+    case Move::Promotion::QUEEN:
+      set_bit(this->wQueens, m.end);
+      break;
+    case Move::Promotion::ROOK:
+      set_bit(this->wRooks, m.end);
+      break;
+    case Move::Promotion::KNIGHT:
+      set_bit(this->wKnights, m.end);
+      break;
+    case Move::Promotion::BISHOP:
+      set_bit(this->wBishops, m.end);
+      break;
+    default:
+      set_bit(this->wPawns, m.end);
+      break;
     }
     break;
   case Move::Piece::W_KNIGHT:
@@ -622,9 +625,12 @@ void Chess::MakeMove(Move &m)
     clear_bit(this->wRooks, m.start);
     set_bit(this->wRooks, m.end);
     // Castling rights
-    if (this->wCastle && m.start == 7) {
+    if (this->wCastle && m.start == 7)
+    {
       this->wCastle = false;
-    } else if (this->wQueenCastle && m.start == 0) {
+    }
+    else if (this->wQueenCastle && m.start == 0)
+    {
       this->wQueenCastle = false;
     }
     break;
@@ -635,38 +641,44 @@ void Chess::MakeMove(Move &m)
   case Move::Piece::W_KING:
     clear_bit(this->wKing, m.start);
     set_bit(this->wKing, m.end);
-    if (this->wCastle) {
+    if (this->wCastle)
+    {
       this->wCastle = false;
     }
-    if (this->wQueenCastle) {
+    if (this->wQueenCastle)
+    {
       this->wQueenCastle = false;
     }
-    if (m.start == 4 && m.end == 6) {
+    if (m.start == 4 && m.end == 6)
+    {
       clear_bit(this->wRooks, 7);
       set_bit(this->wRooks, 5);
-    } else if (m.start == 4 && m.end == 2) {
+    }
+    else if (m.start == 4 && m.end == 2)
+    {
       clear_bit(this->wRooks, 0);
       set_bit(this->wRooks, 3);
     }
     break;
   case Move::Piece::B_PAWN:
     clear_bit(this->bPawns, m.start);
-    switch(m.promotionType) {
-      case Move::Promotion::QUEEN:
-        set_bit(this->bQueens, m.end);
-        break;
-      case Move::Promotion::ROOK:
-        set_bit(this->bRooks, m.end);
-        break;
-      case Move::Promotion::KNIGHT:
-        set_bit(this->bKnights, m.end);
-        break;
-      case Move::Promotion::BISHOP:
-        set_bit(this->bBishops, m.end);
-        break;
-      default:
-        set_bit(this->bPawns, m.end);
-        break;
+    switch (m.promotionType)
+    {
+    case Move::Promotion::QUEEN:
+      set_bit(this->bQueens, m.end);
+      break;
+    case Move::Promotion::ROOK:
+      set_bit(this->bRooks, m.end);
+      break;
+    case Move::Promotion::KNIGHT:
+      set_bit(this->bKnights, m.end);
+      break;
+    case Move::Promotion::BISHOP:
+      set_bit(this->bBishops, m.end);
+      break;
+    default:
+      set_bit(this->bPawns, m.end);
+      break;
     }
     break;
   case Move::Piece::B_KNIGHT:
@@ -680,9 +692,12 @@ void Chess::MakeMove(Move &m)
   case Move::Piece::B_ROOK:
     clear_bit(this->bRooks, m.start);
     set_bit(this->bRooks, m.end);
-    if (this->bCastle && m.start == 63) {
+    if (this->bCastle && m.start == 63)
+    {
       this->bCastle = false;
-    } else if (this->bQueenCastle && m.start == 56) {
+    }
+    else if (this->bQueenCastle && m.start == 56)
+    {
       this->bQueenCastle = false;
     }
     break;
@@ -693,16 +708,21 @@ void Chess::MakeMove(Move &m)
   case Move::Piece::B_KING:
     clear_bit(this->bKing, m.start);
     set_bit(this->bKing, m.end);
-    if (this->bCastle) {
+    if (this->bCastle)
+    {
       this->bCastle = false;
     }
-    if (this->bQueenCastle) {
+    if (this->bQueenCastle)
+    {
       this->bQueenCastle = false;
     }
-    if (m.start == 60 && m.end == 62) {
+    if (m.start == 60 && m.end == 62)
+    {
       clear_bit(this->bRooks, 63);
       set_bit(this->bRooks, 61);
-    } else if (m.start == 60 && m.end == 58) {
+    }
+    else if (m.start == 60 && m.end == 58)
+    {
       clear_bit(this->bRooks, 56);
       set_bit(this->bRooks, 59);
     }
@@ -789,10 +809,12 @@ void Chess::MakeMove(Move &m)
       clear_bit(this->wKing, m.end);
     }
   }
-  if (m.pieceType < Move::Piece::B_PAWN) {
+  if (m.pieceType < Move::Piece::B_PAWN)
+  {
     m.checkType = this->InChecks(Color::BLACK, this->bKing);
   }
-  else {
+  else
+  {
     m.checkType = this->InChecks(Color::WHITE, this->wKing);
   }
 }
@@ -806,7 +828,7 @@ std::vector<Chess *> Chess::PseudoLegalMoves()
 uint64_t Chess::perft(int depth)
 {
   // Was the last move legal?
-  if ((this->turn && this->InCheck(Color::BLACK, this->bKing)) || (!this->turn && this->InCheck(Color::WHITE, this->wKing)))
+  if ((this->turn && (this->InChecks(Color::BLACK, this->bKing) != Move::Check::NO_CHECK)) || (!this->turn && (this->InChecks(Color::WHITE, this->wKing) != Move::Check::NO_CHECK)))
   {
     return 0;
   }
