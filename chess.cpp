@@ -17,7 +17,7 @@ uint64_t Chess::ROOK_MOVES[64][4096] = {};
 uint64_t Chess::QUEEN_MOVES[64][4096 * 4096] = {};
 Move::Promotion Chess::promotions[4] = {Move::Promotion::QUEEN, Move::Promotion::ROOK, Move::Promotion::KNIGHT, Move::Promotion::BISHOP};
 
-void Add(MoveCategories & mC, Move & m)
+void Add(MoveCategories &mC, Move &m)
 {
   if (m.checkType == Move::Check::DOUBLE_CHECK)
   {
@@ -940,7 +940,7 @@ void Chess::UnMakeMove(const Move &m, const BoardState &bs)
   this->thirdOccurrence = bs.thirdOccurrence;
 }
 
-MoveCategories Chess::PseudoLegalMoves()
+MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus)
 {
   MoveCategories moves;
   Chess gameCopy(*this);
@@ -950,6 +950,10 @@ MoveCategories Chess::PseudoLegalMoves()
   const BoardState bs(this->wCastle, this->wQueenCastle, this->bCastle, this->bQueenCastle, this->enPassantIdx, this->lastPawnOrTake, this->fullTurns, this->firstOccurrence, this->secondOccurrence, this->thirdOccurrence);
   if (this->turn)
   {
+    if (checkStatus == Move::Check::DOUBLE_CHECK)
+    {
+      goto whiteKing;
+    }
     // Advance white pawn two squares
     currMoves = up(up(this->wPawns & RANK_2) & this->empties()) & this->empties();
     while (currMoves)
@@ -974,7 +978,7 @@ MoveCategories Chess::PseudoLegalMoves()
     while (currMoves)
     {
       int endIdx = pop_lsb(currMoves);
-      for (Move::Promotion p: promotions)
+      for (Move::Promotion p : promotions)
       {
         Move m(endIdx - 8, endIdx, false, Move::Piece::W_PAWN, p);
         this->MakeMove(m);
@@ -1085,7 +1089,8 @@ MoveCategories Chess::PseudoLegalMoves()
       }
     }
 
-    // White King
+  // White King
+  whiteKing:
     currMoves = KING_MOVES[pop_lsb(gameCopy.wKing)];
     while (currMoves)
     {
@@ -1095,7 +1100,6 @@ MoveCategories Chess::PseudoLegalMoves()
       this->UnMakeMove(m, bs);
       Add(moves, m);
     }
-
   }
   return moves;
 }
@@ -1140,19 +1144,19 @@ uint64_t Chess::perft(int depth)
     nodes += this->perft(depth - 1);
     this->UnMakeMove(m, bs);
   }
-  for (Move &m: pMoves.checks)
+  for (Move &m : pMoves.checks)
   {
     this->MakeMove(m);
     nodes += this->perft(depth - 1);
     this->UnMakeMove(m, bs);
   }
-  for (Move &m: pMoves.captures)
+  for (Move &m : pMoves.captures)
   {
     this->MakeMove(m);
     nodes += this->perft(depth - 1);
     this->UnMakeMove(m, bs);
   }
-  for (Move &m: pMoves.etc)
+  for (Move &m : pMoves.etc)
   {
     this->MakeMove(m);
     nodes += this->perft(depth - 1);

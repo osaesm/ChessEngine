@@ -254,9 +254,6 @@ protected:
   static uint64_t ROOK_MOVES[64][4096];
   static uint64_t BISHOP_MOVES[64][4096];
   static uint64_t QUEEN_MOVES[64][4096 * 4096];
-  // static ankerl::unordered_dense::map<int, uint64_t> ROOK_MOVES[64];
-  // static ankerl::unordered_dense::map<int, uint64_t> BISHOP_MOVES[64];
-  // static ankerl::unordered_dense::map<int, uint64_t> QUEEN_MOVES[64];
   static Move::Promotion promotions[4];
 
   constexpr uint64_t whites() { return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing); };
@@ -270,7 +267,7 @@ public:
   std::string BoardIdx();
   std::string ConvertToFEN();
   std::vector<Chess *> LegalMoves();
-  MoveCategories PseudoLegalMoves();
+  MoveCategories PseudoLegalMoves(const Move::Check checkStatus);
   Move::Check InChecks(const Color kingColor, const uint64_t kingBoard);
   void MakeMove(Move &m);
   void UnMakeMove(const Move &m, const BoardState &bs);
