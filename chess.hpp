@@ -155,26 +155,27 @@ constexpr int BishopHash(short idx, uint64_t empties, uint64_t opponent)
   return (upLeftCount << 9) + (upRightCount << 6) + (downRightCount << 3) + downLeftCount;
 }
 
-constexpr int QueenHash(short idx, uint64_t empties, uint64_t opponent)
-{
-  int straightHash = RookHash(idx, empties, opponent);
-  int diagonalHash = BishopHash(idx, empties, opponent);
-  int queenHash = diagonalHash % 8;       // downLeftCount
-  queenHash += ((straightHash % 8) << 3); // downCount
-  diagonalHash /= 8;
-  straightHash /= 8;
-  queenHash += ((diagonalHash % 8) << 6); // downRightCount
-  queenHash += ((straightHash % 8) << 9); // rightCount
-  diagonalHash /= 8;
-  straightHash /= 8;
-  queenHash += ((diagonalHash % 8) << 12); // upRightCount
-  queenHash += ((straightHash % 8) << 15); // upCount
-  diagonalHash /= 8;
-  straightHash /= 8;
-  queenHash += ((diagonalHash % 8) << 18); // upLeftCount
-  queenHash += ((straightHash % 8) << 21); // leftCount
-  return queenHash;
-}
+// constexpr int QueenHash(short idx, uint64_t empties, uint64_t opponent)
+// {
+//   int straightHash = RookHash(idx, empties, opponent);
+//   int diagonalHash = BishopHash(idx, empties, opponent);
+//   int queenHash = diagonalHash % 8;       // downLeftCount
+//   queenHash += ((straightHash % 8) << 3); // downCount
+//   diagonalHash /= 8;
+//   straightHash /= 8;
+//   queenHash += ((diagonalHash % 8) << 6); // downRightCount
+//   queenHash += ((straightHash % 8) << 9); // rightCount
+//   diagonalHash /= 8;
+//   straightHash /= 8;
+//   queenHash += ((diagonalHash % 8) << 12); // upRightCount
+//   queenHash += ((straightHash % 8) << 15); // upCount
+//   diagonalHash /= 8;
+//   straightHash /= 8;
+//   queenHash += ((diagonalHash % 8) << 18); // upLeftCount
+//   queenHash += ((straightHash % 8) << 21); // leftCount
+//   return queenHash;
+// }
+
 enum Color : bool
 {
   WHITE = true,
@@ -214,9 +215,9 @@ struct Move
     ROOK,
     KNIGHT,
     BISHOP,
-    NONE
+    NA
   } promotionType;
-  Move(int s, int e, bool eP, Piece pT, Promotion prT) : start(s), end(e), checkType(NO_CHECK), pieceType(pT), captureType(NONE), promotionType(prT) {};
+  Move(int s, int e, bool eP, Piece pT, Promotion prT) : start(s), end(e), enPassant(eP), checkType(NO_CHECK), pieceType(pT), captureType(NONE), promotionType(prT) {};
 };
 
 struct BoardState
@@ -253,7 +254,7 @@ protected:
   static uint64_t KING_MOVES[64];
   static uint64_t ROOK_MOVES[64][4096];
   static uint64_t BISHOP_MOVES[64][4096];
-  static uint64_t QUEEN_MOVES[64][4096 * 4096];
+  // static uint64_t QUEEN_MOVES[64][4096 * 4096];
   static Move::Promotion promotions[4];
 
   constexpr uint64_t whites() { return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing); };
@@ -266,14 +267,12 @@ public:
   static void Initialize();
   std::string BoardIdx();
   std::string ConvertToFEN();
-  std::vector<Chess *> LegalMoves();
+  // std::vector<Chess *> LegalMoves();
   MoveCategories PseudoLegalMoves(const Move::Check checkStatus);
   Move::Check InChecks(const Color kingColor, const uint64_t kingBoard);
   void MakeMove(Move &m);
   void UnMakeMove(const Move &m, const BoardState &bs);
-  // void MovePiece(const char pieceType, const int start, const int end, uint64_t opponent);
-  // void PromotePawn(const char pieceType, const int end);
-  uint64_t perft(int depth);
+  uint64_t perft(int depth, Move::Check checkType);
 };
 
 #endif

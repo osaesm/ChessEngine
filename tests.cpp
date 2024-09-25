@@ -6,7 +6,7 @@
 
 bool FenTest1()
 {
-  std::string fenString = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0";
+  std::string fenString = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   Chess *game = new Chess(fenString);
   std::string result = game->ConvertToFEN();
   if (result.compare(fenString) != 0)
@@ -107,13 +107,13 @@ void FenConversionTests()
 
 bool PerftTest1()
 {
-  std::string fenString = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0";
+  std::string fenString = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   Chess *game = new Chess(fenString);
   long results[6] = {20, 400, 8902, 197281, 4865609, 119060324};
   long actual = 0;
   for (int i = 0; i < sizeof(results) / sizeof(results[0]); ++i)
   {
-    actual = game->perft(i + 1);
+    actual = game->perft(i + 1, Move::Check::NO_CHECK);
     if (actual != results[i])
     {
       std::cout << "Failed Perft Test 1" << std::endl;
@@ -129,13 +129,13 @@ bool PerftTest1()
 
 bool PerftTest2()
 {
-  std::string fenString = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0";
+  std::string fenString = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
   Chess *game = new Chess(fenString);
   long results[6] = {48, 2039, 97862, 4085603, 193690690, 8031647685};
   long actual = 0;
   for (int i = 0; i < sizeof(results) / sizeof(results[0]); ++i)
   {
-    actual = game->perft(i + 1);
+    actual = game->perft(i + 1, Move::Check::NO_CHECK);
     if (actual != results[i])
     {
       std::cout << "Failed Perft Test 2" << std::endl;
@@ -151,13 +151,13 @@ bool PerftTest2()
 
 bool PerftTest3()
 {
-  std::string fenString = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 0";
+  std::string fenString = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
   Chess *game = new Chess(fenString);
   long results[6] = {14, 191, 2812, 43238, 674624, 11030083};
   long actual = 0;
   for (int i = 0; i < sizeof(results) / sizeof(results[0]); ++i)
   {
-    actual = game->perft(i + 1);
+    actual = game->perft(i + 1, Move::Check::NO_CHECK);
     if (actual != results[i])
     {
       std::cout << "Failed Perft Test 3" << std::endl;
@@ -179,7 +179,7 @@ bool PerftTest4()
   long actual = 0;
   for (int i = 0; i < sizeof(results) / sizeof(results[0]); ++i)
   {
-    actual = game->perft(i + 1);
+    actual = game->perft(i + 1, Move::Check::NO_CHECK);
     if (actual != results[i])
     {
       std::cout << "Failed Perft Test 4" << std::endl;
@@ -201,7 +201,7 @@ bool PerftTest5 ()
   long actual = 0;
   for (int i = 0; i < sizeof(results) / sizeof(results[0]); ++i)
   {
-    actual = game->perft(i + 1);
+    actual = game->perft(i + 1, Move::Check::NO_CHECK);
     if (actual != results[i])
     {
       std::cout << "Failed Perft Test 5" << std::endl;
