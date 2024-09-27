@@ -179,7 +179,7 @@ bool PerftTest4()
   long actual = 0;
   for (int i = 0; i < sizeof(results) / sizeof(results[0]); ++i)
   {
-    actual = game->perft(i + 1, Move::Check::NO_CHECK);
+    actual = game->perft(i + 1, Move::Check::CHECK);
     if (actual != results[i])
     {
       std::cout << "Failed Perft Test 4" << std::endl;
@@ -221,7 +221,7 @@ void PerftTests()
 
   std::vector<bool> tests{
       PerftTest1(),
-      // PerftTest2(),
+      PerftTest2(),
       PerftTest3(),
       PerftTest4(),
       PerftTest5(),
