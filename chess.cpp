@@ -1,6 +1,7 @@
-#include "chess.hpp"
 #include <iostream>
-#include <bitset>
+#include <memory>
+
+#include "chess.hpp"
 
 // 0: white takes, 1: black takes
 // Does not include two forward special case
@@ -21,19 +22,19 @@ void Add(MoveCategories &mC, Move &m)
 {
   if (m.checkType == Move::Check::DOUBLE_CHECK)
   {
-    mC.doubleChecks.push_back(m);
+    mC.doubleChecks.emplace_back(m);
   }
   else if (m.checkType == Move::Check::CHECK)
   {
-    mC.checks.push_back(m);
+    mC.checks.emplace_back(m);
   }
   else if (m.captureType != Move::Piece::NONE)
   {
-    mC.captures.push_back(m);
+    mC.captures.emplace_back(m);
   }
   else
   {
-    mC.etc.push_back(m);
+    mC.etc.emplace_back(m);
   }
 }
 
@@ -305,12 +306,12 @@ Chess::Chess(const Chess &x)
   this->firstOccurrence.clear();
   for (const auto &k : x.firstOccurrence)
   {
-    this->firstOccurrence.push_back(k);
+    this->firstOccurrence.emplace_back(k);
   }
   this->secondOccurrence.clear();
   for (const auto &k : x.secondOccurrence)
   {
-    this->secondOccurrence.push_back(k);
+    this->secondOccurrence.emplace_back(k);
   }
   this->thirdOccurrence = x.thirdOccurrence;
 }
@@ -318,7 +319,7 @@ Chess::Chess(const Chess &x)
 std::string Chess::BoardIdx()
 {
   // Creating gameCopy to pop pieces off of
-  Chess *gameCopy = new Chess(*this);
+  std::unique_ptr<Chess> gameCopy(new Chess(*this));
 
   // First Part
   char board[64];
@@ -387,8 +388,6 @@ std::string Chess::BoardIdx()
   {
     board[pop_lsb(gameCopy->bKing)] = 'k';
   }
-
-  delete gameCopy;
 
   std::string boardHash = "";
   for (int rowStart = 56; rowStart >= 0; rowStart -= 8)
@@ -497,7 +496,15 @@ std::string Chess::ConvertToFEN()
 
 Move::Check Chess::InChecks(const Color kingColor, const uint64_t kingBoard)
 {
-  uint64_t allPieces = (this->whites() | this->blacks() | kingBoard) & ~(kingColor ? this->wKing : this->bKing);
+  uint64_t currEmpties = this->empties(); 
+  if (kingColor == Color::WHITE && kingBoard != this->wKing)
+  {
+    currEmpties = (currEmpties | this->wKing) & ~kingBoard;
+  }
+  else if (kingColor == Color::BLACK && kingBoard != this->bKing)
+  {
+    currEmpties = (currEmpties | this->bKing) & ~kingBoard;
+  }
   uint64_t opponent = kingColor ? this->blacks() : this->whites();
   uint64_t oppRooks = kingColor ? this->bRooks : this->wRooks;
   uint64_t oppBishops = kingColor ? this->bBishops : this->wBishops;
@@ -508,8 +515,8 @@ Move::Check Chess::InChecks(const Color kingColor, const uint64_t kingBoard)
 
   const uint64_t kingIdx = std::countr_zero(kingBoard);
   uint64_t checkMasks[5] = {
-      (BISHOP_MOVES[kingIdx][BishopHash(kingIdx, ~allPieces, opponent)] & (oppBishops | oppQueens)),
-      (ROOK_MOVES[kingIdx][RookHash(kingIdx, ~allPieces, opponent)] & (oppRooks | oppQueens)),
+      (BISHOP_MOVES[kingIdx][BishopHash(kingIdx, currEmpties, opponent)] & (oppBishops | oppQueens)),
+      (ROOK_MOVES[kingIdx][RookHash(kingIdx, currEmpties, opponent)] & (oppRooks | oppQueens)),
       (KNIGHT_MOVES[kingIdx] & oppKnights),
       (KING_MOVES[kingIdx] & oppKing),
       (PAWN_TAKES[kingIdx][kingColor ? 0 : 1] & oppPawns)};
@@ -725,10 +732,12 @@ void Chess::MakeMove(Move &m)
   {
     if (m.pieceType == Move::Piece::W_PAWN)
     {
+      m.captureType = Move::Piece::B_PAWN;
       clear_bit(this->bPawns, m.end - 8);
     }
     else
     {
+      m.captureType = Move::Piece::W_PAWN;
       clear_bit(this->wPawns, m.end + 8);
     }
   }
@@ -933,6 +942,8 @@ void Chess::UnMakeMove(const Move &m, const BoardState &bs)
       set_bit(this->bRooks, 56);
     }
     break;
+  case Move::Piece::NONE:
+    std::cout << "Unmoving a NONE piece??" << std::endl;
   }
   // Undo the capture
   switch (m.captureType)
@@ -987,6 +998,8 @@ void Chess::UnMakeMove(const Move &m, const BoardState &bs)
   case Move::Piece::B_KING:
     set_bit(this->bKing, m.end);
     break;
+  case Move::Piece::NONE:
+    break;
   }
   // Reset the Board State (Castling rights, en passant index, etc.)
   this->turn = (Color)(!this->turn);
@@ -1007,7 +1020,7 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus)
   MoveCategories moves;
   Chess gameCopy(*this);
   uint64_t currMoves = 0ULL;
-  uint64_t enPassantMask = this->enPassantIdx == -1 ? 0ULL : (1ULL << this->enPassantIdx);
+  uint64_t enPassantMask = (this->enPassantIdx == -1) ? 0ULL : (1ULL << this->enPassantIdx);
   const BoardState bs(this->wCastle, this->wQueenCastle, this->bCastle, this->bQueenCastle, this->enPassantIdx, this->lastPawnOrTake, this->fullTurns, this->firstOccurrence, this->secondOccurrence, this->thirdOccurrence);
   if (this->turn)
   {
@@ -1092,7 +1105,7 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus)
       while (gameCopy.wKnights)
       {
         int idx = pop_lsb(gameCopy.wKnights);
-        currMoves = KNIGHT_MOVES[idx] & (~this->whites());
+        currMoves = KNIGHT_MOVES[idx] & ~(this->whites());
         while (currMoves)
         {
           int endIdx = pop_lsb(currMoves);

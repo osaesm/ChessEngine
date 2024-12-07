@@ -2,17 +2,13 @@
 #define CHESS_H
 
 #include <bit>
-#include <bitset>
 #include <cstdint>
-#include <iostream>
 #include <string>
 #include <vector>
 
-// #include "extern/unordered_dense/include/ankerl/unordered_dense.h"
-
-#define set_bit(b, i) ((b) |= (1ULL << i))
-#define get_bit(b, i) ((b >> i) & (1ULL))
-#define clear_bit(b, i) ((b) &= ~(1ULL << i))
+#define set_bit(b, i) (b |= (1ULL << (i)))
+#define get_bit(b, i) (((b) >> (i)) & 1ULL)
+#define clear_bit(b, i) (b &= ~(1ULL << (i)))
 
 inline int pop_lsb(uint64_t &b)
 {
@@ -154,27 +150,6 @@ constexpr int BishopHash(short idx, uint64_t empties, uint64_t opponent)
 
   return (upLeftCount << 9) + (upRightCount << 6) + (downRightCount << 3) + downLeftCount;
 }
-
-// constexpr int QueenHash(short idx, uint64_t empties, uint64_t opponent)
-// {
-//   int straightHash = RookHash(idx, empties, opponent);
-//   int diagonalHash = BishopHash(idx, empties, opponent);
-//   int queenHash = diagonalHash % 8;       // downLeftCount
-//   queenHash += ((straightHash % 8) << 3); // downCount
-//   diagonalHash /= 8;
-//   straightHash /= 8;
-//   queenHash += ((diagonalHash % 8) << 6); // downRightCount
-//   queenHash += ((straightHash % 8) << 9); // rightCount
-//   diagonalHash /= 8;
-//   straightHash /= 8;
-//   queenHash += ((diagonalHash % 8) << 12); // upRightCount
-//   queenHash += ((straightHash % 8) << 15); // upCount
-//   diagonalHash /= 8;
-//   straightHash /= 8;
-//   queenHash += ((diagonalHash % 8) << 18); // upLeftCount
-//   queenHash += ((straightHash % 8) << 21); // leftCount
-//   return queenHash;
-// }
 
 enum Color : bool
 {
