@@ -1389,9 +1389,9 @@ uint64_t Chess::perft(int depth, Move::Check checkType)
   {
     return 0;
   }
-  std::string currFen = this->ConvertToFEN();
-  if (perftResults[currFen].contains(depth)) {
-    return perftResults[currFen][depth];
+  std::string currIdx = this->BoardIdx();
+  if (perftResults[currIdx].contains(depth)) {
+    return perftResults[currIdx][depth];
   }
 
   MoveCategories pMoves = this->PseudoLegalMoves(checkType);
@@ -1421,7 +1421,7 @@ uint64_t Chess::perft(int depth, Move::Check checkType)
     nodes += this->perft(depth - 1, Move::NO_CHECK);
     this->UnMakeMove(m, bs);
   }
-  perftResults[currFen][depth] = nodes;
+  perftResults[currIdx][depth] = nodes;
 
   return nodes;
 }
