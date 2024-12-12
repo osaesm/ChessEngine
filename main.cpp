@@ -5,10 +5,10 @@
 
 /**
  * TODO:
- * - First, try replacing premove dictionaries with arrays and see what that does (12% speedup; 27->24 sec)
- * - No precomputed Rook/Queen/Bishop moves for now
- * - Maybe remove pawn/knight/king precomputed moves
- * - Create Move class so moves can be done & undone on the same object
+ * - Multithread perft
+ * - Create an eval function
+ *   - minimax, maybe NN/CNN, BFS vs DFS?
+ * - Store previous results with indexes [Board idx][depth] = #
  */
 
 int main()

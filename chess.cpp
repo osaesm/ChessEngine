@@ -1,5 +1,7 @@
 #include <iostream>
+#include <map>
 #include <memory>
+#include <unordered_map>
 
 #include "chess.hpp"
 
@@ -15,7 +17,6 @@ uint64_t Chess::BISHOP_MOVES[64][4096] = {};
 // Hashed Rook moves
 uint64_t Chess::ROOK_MOVES[64][4096] = {};
 // Hash Queen moves
-// uint64_t Chess::QUEEN_MOVES[64][4096 * 4096] = {};
 Move::Promotion Chess::promotions[4] = {Move::Promotion::QUEEN, Move::Promotion::ROOK, Move::Promotion::KNIGHT, Move::Promotion::BISHOP};
 
 void Add(MoveCategories &mC, Move &m)
@@ -1368,6 +1369,7 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus)
 // * Then iterate over captures (fewer pieces -> fewer nodes later)
 // * Then iterate over all other moves
 
+std::unordered_map<std::string, std::map<int, uint64_t>> perftResults;
 uint64_t Chess::perft(int depth, Move::Check checkType)
 {
   // Was the last move legal?
@@ -1386,6 +1388,10 @@ uint64_t Chess::perft(int depth, Move::Check checkType)
   if (this->thirdOccurrence)
   {
     return 0;
+  }
+  std::string currFen = this->ConvertToFEN();
+  if (perftResults[currFen].contains(depth)) {
+    return perftResults[currFen][depth];
   }
 
   MoveCategories pMoves = this->PseudoLegalMoves(checkType);
@@ -1415,6 +1421,7 @@ uint64_t Chess::perft(int depth, Move::Check checkType)
     nodes += this->perft(depth - 1, Move::NO_CHECK);
     this->UnMakeMove(m, bs);
   }
+  perftResults[currFen][depth] = nodes;
 
   return nodes;
 }
