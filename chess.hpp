@@ -3,6 +3,7 @@
 
 #include <bit>
 #include <cstdint>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -10,8 +11,7 @@
 #define get_bit(b, i) (((b) >> (i)) & 1ULL)
 #define clear_bit(b, i) (b &= ~(1ULL << (i)))
 
-inline int pop_lsb(uint64_t &b)
-{
+inline int pop_lsb(uint64_t &b) {
   int i = std::countr_zero(b);
   b &= (b - 1);
   return i;
@@ -40,135 +40,119 @@ constexpr uint64_t down(uint64_t board) { return ((board & ~RANK_1) >> 8); }
 constexpr uint64_t left(uint64_t board) { return ((board & ~FILE_A) >> 1); }
 constexpr uint64_t right(uint64_t board) { return ((board & ~FILE_H) << 1); }
 
-constexpr uint64_t up_left(uint64_t board) { return ((board & ~RANK_8 & ~FILE_A) << 7); }
-constexpr uint64_t up_right(uint64_t board) { return ((board & ~RANK_8 & ~FILE_H) << 9); }
-constexpr uint64_t down_left(uint64_t board) { return ((board & ~RANK_1 & ~FILE_A) >> 9); }
-constexpr uint64_t down_right(uint64_t board) { return ((board & ~RANK_1 & ~FILE_H) >> 7); }
+constexpr uint64_t up_left(uint64_t board) {
+  return ((board & ~RANK_8 & ~FILE_A) << 7);
+}
+constexpr uint64_t up_right(uint64_t board) {
+  return ((board & ~RANK_8 & ~FILE_H) << 9);
+}
+constexpr uint64_t down_left(uint64_t board) {
+  return ((board & ~RANK_1 & ~FILE_A) >> 9);
+}
+constexpr uint64_t down_right(uint64_t board) {
+  return ((board & ~RANK_1 & ~FILE_H) >> 7);
+}
 
-constexpr int RookHash(short idx, uint64_t empties, uint64_t opponent)
-{
+constexpr int RookHash(short idx, uint64_t empties, uint64_t opponent) {
   uint64_t leftMask = left(1ULL << idx);
   int leftCount = 1;
-  while (leftMask & empties)
-  {
+  while (leftMask & empties) {
     leftMask = left(leftMask);
     ++leftCount;
   }
-  if (!(leftMask & opponent))
-  {
+  if (!(leftMask & opponent)) {
     --leftCount;
   }
 
   uint64_t upMask = up(1ULL << idx);
   int upCount = 1;
-  while (upMask & empties)
-  {
+  while (upMask & empties) {
     upMask = up(upMask);
     ++upCount;
   }
-  if (!(upMask & opponent))
-  {
+  if (!(upMask & opponent)) {
     --upCount;
   }
 
   uint64_t rightMask = right(1ULL << idx);
   int rightCount = 1;
-  while (rightMask & empties)
-  {
+  while (rightMask & empties) {
     rightMask = right(rightMask);
     ++rightCount;
   }
-  if (!(rightMask & opponent))
-  {
+  if (!(rightMask & opponent)) {
     --rightCount;
   }
 
   uint64_t downMask = down(1ULL << idx);
   int downCount = 1;
-  while (downMask & empties)
-  {
+  while (downMask & empties) {
     downMask = down(downMask);
     ++downCount;
   }
-  if (!(downMask & opponent))
-  {
+  if (!(downMask & opponent)) {
     --downCount;
   }
 
   return (leftCount << 9) + (upCount << 6) + (rightCount << 3) + downCount;
 }
 
-constexpr int BishopHash(short idx, uint64_t empties, uint64_t opponent)
-{
+constexpr int BishopHash(short idx, uint64_t empties, uint64_t opponent) {
   uint64_t upLeftMask = up_left(1ULL << idx);
   int upLeftCount = 1;
-  while (upLeftMask & empties)
-  {
+  while (upLeftMask & empties) {
     upLeftMask = up_left(upLeftMask);
     ++upLeftCount;
   }
-  if (!(upLeftMask & opponent))
-  {
+  if (!(upLeftMask & opponent)) {
     --upLeftCount;
   }
 
   uint64_t upRightMask = up_right(1ULL << idx);
   int upRightCount = 1;
-  while (upRightMask & empties)
-  {
+  while (upRightMask & empties) {
     upRightMask = up_right(upRightMask);
     ++upRightCount;
   }
-  if (!(upRightMask & opponent))
-  {
+  if (!(upRightMask & opponent)) {
     --upRightCount;
   }
 
   uint64_t downRightMask = down_right(1ULL << idx);
   int downRightCount = 1;
-  while (downRightMask & empties)
-  {
+  while (downRightMask & empties) {
     downRightMask = down_right(downRightMask);
     ++downRightCount;
   }
-  if (!(downRightMask & opponent))
-  {
+  if (!(downRightMask & opponent)) {
     --downRightCount;
   }
 
   uint64_t downLeftMask = down_left(1ULL << idx);
   int downLeftCount = 1;
-  while (downLeftMask & empties)
-  {
+  while (downLeftMask & empties) {
     downLeftMask = down_left(downLeftMask);
     ++downLeftCount;
   }
-  if (!(downLeftMask & opponent))
-  {
+  if (!(downLeftMask & opponent)) {
     --downLeftCount;
   }
 
-  return (upLeftCount << 9) + (upRightCount << 6) + (downRightCount << 3) + downLeftCount;
+  return (upLeftCount << 9) + (upRightCount << 6) + (downRightCount << 3) +
+         downLeftCount;
 }
 
-enum Color : bool
-{
-  WHITE = true,
-  BLACK = false
-};
+enum Color : bool { WHITE = true, BLACK = false };
 
-struct Move
-{
+struct Move {
   int start, end;
   bool enPassant;
-  enum Check
-  {
+  enum Check {
     DOUBLE_CHECK,
     CHECK,
     NO_CHECK,
   } checkType;
-  enum Piece
-  {
+  enum Piece {
     W_PAWN,
     W_KNIGHT,
     W_BISHOP,
@@ -184,43 +168,43 @@ struct Move
     NONE // for captures
   } pieceType;
   Piece captureType;
-  enum Promotion
-  {
-    QUEEN,
-    ROOK,
-    KNIGHT,
-    BISHOP,
-    NA
-  } promotionType;
-  Move(int s, int e, bool eP, Piece pT, Promotion prT) : start(s), end(e), enPassant(eP), checkType(NO_CHECK), pieceType(pT), captureType(NONE), promotionType(prT) {};
+  enum Promotion { QUEEN, ROOK, KNIGHT, BISHOP, NA } promotionType;
+  Move(int s, int e, bool eP, Piece pT, Promotion prT)
+      : start(s), end(e), enPassant(eP), checkType(NO_CHECK), pieceType(pT),
+        captureType(NONE), promotionType(prT){};
 };
 
-struct BoardState
-{
+struct BoardState {
   bool wCastle, wQueenCastle, bCastle, bQueenCastle;
   int enPassantIdx;
   short lastPawnOrTake;
   int fullTurns;
   std::vector<std::string> firstOccurrence, secondOccurrence;
   bool thirdOccurrence;
-  BoardState(bool wC, bool wQC, bool bC, bool bQC, int ePI, short lPOT, int fT, std::vector<std::string> &fO, std::vector<std::string> &sO, bool tO) : wCastle(wC), wQueenCastle(wQC), bCastle(bC), bQueenCastle(bQC), enPassantIdx(ePI), lastPawnOrTake(lPOT), fullTurns(fT), firstOccurrence(fO), secondOccurrence(sO), thirdOccurrence(tO) {};
+  BoardState(bool wC, bool wQC, bool bC, bool bQC, int ePI, short lPOT, int fT,
+             std::vector<std::string> &fO, std::vector<std::string> &sO,
+             bool tO)
+      : wCastle(wC), wQueenCastle(wQC), bCastle(bC), bQueenCastle(bQC),
+        enPassantIdx(ePI), lastPawnOrTake(lPOT), fullTurns(fT),
+        firstOccurrence(fO), secondOccurrence(sO), thirdOccurrence(tO){};
 };
 
-struct MoveCategories
-{
+struct MoveCategories {
   std::vector<Move> doubleChecks, checks, captures, etc;
 };
-class Chess
-{
+class Chess {
 protected:
-  uint64_t wPawns, bPawns, wKnights, bKnights, wBishops, bBishops, wRooks, bRooks, wQueens, bQueens, wKing, bKing;
+  uint64_t wPawns, bPawns, wKnights, bKnights, wBishops, bBishops, wRooks,
+      bRooks, wQueens, bQueens, wKing, bKing;
   Color turn;
   bool wCastle, wQueenCastle, bCastle, bQueenCastle;
   int enPassantIdx;
   short lastPawnOrTake;
   int fullTurns;
-  std::vector<std::string> firstOccurrence;
-  std::vector<std::string> secondOccurrence;
+  std::set<std::string> firstOccurrence;
+  std::set<std::string> secondOccurrence;
+  // std::vector<std::string> firstOccurrence;
+  // std::vector<std::string> secondOccurrence;
   bool thirdOccurrence;
 
   // 0: white takes, 1: black takes
@@ -229,11 +213,14 @@ protected:
   static uint64_t KING_MOVES[64];
   static uint64_t ROOK_MOVES[64][4096];
   static uint64_t BISHOP_MOVES[64][4096];
-  // static uint64_t QUEEN_MOVES[64][4096 * 4096];
   static Move::Promotion promotions[4];
 
-  constexpr uint64_t whites() { return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing); };
-  constexpr uint64_t blacks() { return (bPawns | bKnights | bBishops | bRooks | bQueens | bKing); };
+  constexpr uint64_t whites() {
+    return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing);
+  };
+  constexpr uint64_t blacks() {
+    return (bPawns | bKnights | bBishops | bRooks | bQueens | bKing);
+  };
   constexpr uint64_t empties() { return ~(whites() | blacks()); };
 
 public:
