@@ -200,8 +200,6 @@ protected:
   int enPassantIdx;
   short lastPawnOrTake;
   int fullTurns;
-  // std::deque<std::string> firstOccurrence;
-  // std::deque<std::string> secondOccurrence;
   std::vector<std::string> firstOccurrence;
   std::vector<std::string> secondOccurrence;
   bool thirdOccurrence;
