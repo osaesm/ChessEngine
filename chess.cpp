@@ -277,14 +277,8 @@ Chess::Chess(const Chess &x) {
   this->fullTurns = x.fullTurns;
 
   // First/Second/Third Occurrence
-  this->firstOccurrence.clear();
-  for (const auto &k : x.firstOccurrence) {
-    this->firstOccurrence.emplace_back(k);
-  }
-  this->secondOccurrence.clear();
-  for (const auto &k : x.secondOccurrence) {
-    this->secondOccurrence.emplace_back(k);
-  }
+  this->firstOccurrence = x.firstOccurrence;
+  this->secondOccurrence = x.secondOccurrence;
   this->thirdOccurrence = x.thirdOccurrence;
 }
 
@@ -700,19 +694,28 @@ void Chess::MakeMove(Move &m) {
     m.checkType = this->InChecks(Color::WHITE, this->wKing);
   }
   std::string currIdx = this->BoardIdx();
-  for (auto firsts : this->firstOccurrence) {
-    if (!currIdx.compare(firsts)) {
-      for (auto seconds: this->secondOccurrence) {
-        if (!currIdx.compare(seconds)) {
+  // if (this->firstOccurrence.contains(currIdx)) {
+  //   if (this->secondOccurrence.contains(currIdx)) {
+  //     this->thirdOccurrence = true;
+  //     return;
+  //   }
+  //   this->secondOccurrence.insert(currIdx);
+  //   return;
+  // }
+  // this->firstOccurrence.insert(currIdx);
+  for (auto x : this->firstOccurrence) {
+    if (!currIdx.compare(x)) {
+      for (auto y : this->secondOccurrence) {
+        if (!currIdx.compare(y)) {
           this->thirdOccurrence = true;
           return;
         }
       }
-      this->secondOccurrence.emplace_back(currIdx);
+      this->secondOccurrence.insert(this->secondOccurrence.begin(), currIdx);
       return;
     }
   }
-  this->firstOccurrence.emplace_back(currIdx);
+  this->firstOccurrence.insert(this->firstOccurrence.begin(), currIdx);
 }
 
 void Chess::UnMakeMove(const Move &m, const BoardState &bs) {
@@ -1227,7 +1230,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
 // * Then iterate over all other moves
 
 // std::unordered_map<std::string, std::map<int, uint64_t>> perftResults;
-std::unordered_map<std::string, std::map<int, std::map<int, uint64_t>>> perftResults;
+std::unordered_map<std::string, std::map<int, std::map<int, uint64_t>>>
+    perftResults;
 uint64_t Chess::perft(int depth, Move::Check checkType) {
   // Was the last move legal?
   if ((this->turn &&
@@ -1254,18 +1258,16 @@ uint64_t Chess::perft(int depth, Move::Check checkType) {
 
   std::string currIdx = this->BoardIdx();
   int numTimes = 1;
-  for (auto nextIdx : this->secondOccurrence) {
-    if (!currIdx.compare(nextIdx)) {
+  for (auto secondTime : this->secondOccurrence) {
+    if (!currIdx.compare(secondTime)) {
       numTimes = 2;
       break;
     }
   }
-  if (perftResults[currIdx].contains(depth) && perftResults[currIdx][depth].contains(numTimes)) {
+  if (perftResults[currIdx].contains(depth) &&
+      perftResults[currIdx][depth].contains(numTimes)) {
     return perftResults[currIdx][depth][numTimes];
   }
-  // if (perftResults[currIdx].contains(depth)) {
-  //   return perftResults[currIdx][depth];
-  // }
 
   MoveCategories pMoves = this->PseudoLegalMoves(checkType);
   uint64_t nodes = 0ULL;

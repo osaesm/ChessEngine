@@ -3,7 +3,6 @@
 
 #include <bit>
 #include <cstdint>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -201,10 +200,10 @@ protected:
   int enPassantIdx;
   short lastPawnOrTake;
   int fullTurns;
-  std::set<std::string> firstOccurrence;
-  std::set<std::string> secondOccurrence;
-  // std::vector<std::string> firstOccurrence;
-  // std::vector<std::string> secondOccurrence;
+  // std::deque<std::string> firstOccurrence;
+  // std::deque<std::string> secondOccurrence;
+  std::vector<std::string> firstOccurrence;
+  std::vector<std::string> secondOccurrence;
   bool thirdOccurrence;
 
   // 0: white takes, 1: black takes
