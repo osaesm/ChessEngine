@@ -226,11 +226,10 @@ public:
   static void Initialize();
   std::string BoardIdx();
   std::string ConvertToFEN();
-  // std::vector<Chess *> LegalMoves();
-  MoveCategories PseudoLegalMoves(const Move::Check checkStatus);
+  MoveCategories PseudoLegalMoves(const Move::Check checkStatus, bool tracking);
   Move::Check InChecks(const Color kingColor, const uint64_t kingBoard);
-  void MakeMove(Move &m);
-  void UnMakeMove(const Move &m, const BoardState &bs);
+  void MakeMove(Move &m, bool tracking);
+  void UnMakeMove(const Move &m, const BoardState &bs, bool tracking);
   uint64_t perft(int depth, Move::Check checkType);
 };
 

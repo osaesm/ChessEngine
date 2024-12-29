@@ -277,8 +277,14 @@ Chess::Chess(const Chess &x) {
   this->fullTurns = x.fullTurns;
 
   // First/Second/Third Occurrence
-  this->firstOccurrence = x.firstOccurrence;
-  this->secondOccurrence = x.secondOccurrence;
+  this->firstOccurrence.clear();
+  for (const auto &k : x.firstOccurrence) {
+    this->firstOccurrence.emplace_back(k);
+  }
+  this->secondOccurrence.clear();
+  for (const auto &k : x.secondOccurrence) {
+    this->secondOccurrence.emplace_back(k);
+  }
   this->thirdOccurrence = x.thirdOccurrence;
 }
 
@@ -463,12 +469,14 @@ Move::Check Chess::InChecks(const Color kingColor, const uint64_t kingBoard) {
   return checkType;
 }
 
-void Chess::MakeMove(Move &m) {
+void Chess::MakeMove(Move &m, bool tracking) {
   this->enPassantIdx = -1;
   if (!this->turn) {
     ++this->fullTurns;
   }
-  ++this->lastPawnOrTake;
+  if (tracking) {
+    ++this->lastPawnOrTake;
+  }
   this->turn = (Color)(!this->turn);
   // Clear start square and fill end square
   // Promote Pawns
@@ -499,9 +507,11 @@ void Chess::MakeMove(Move &m) {
       set_bit(this->wPawns, m.end);
       break;
     }
-    this->firstOccurrence.clear();
-    this->secondOccurrence.clear();
-    this->lastPawnOrTake = 0;
+    if (tracking) {
+      this->firstOccurrence.clear();
+      this->secondOccurrence.clear();
+      this->lastPawnOrTake = 0;
+    }
     break;
   case Move::Piece::W_KNIGHT:
     clear_bit(this->wKnights, m.start);
@@ -517,12 +527,16 @@ void Chess::MakeMove(Move &m) {
     // Castling rights
     if (this->wCastle && m.start == 7) {
       this->wCastle = false;
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+      if (tracking) {
+        this->firstOccurrence.clear();
+        this->secondOccurrence.clear();
+      }
     } else if (this->wQueenCastle && m.start == 0) {
       this->wQueenCastle = false;
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+      if (tracking) {
+        this->firstOccurrence.clear();
+        this->secondOccurrence.clear();
+      }
     }
     break;
   case Move::Piece::W_QUEEN:
@@ -534,13 +548,17 @@ void Chess::MakeMove(Move &m) {
     set_bit(this->wKing, m.end);
     if (this->wCastle) {
       this->wCastle = false;
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+      if (tracking) {
+        this->firstOccurrence.clear();
+        this->secondOccurrence.clear();
+      }
     }
     if (this->wQueenCastle) {
       this->wQueenCastle = false;
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+      if (tracking) {
+        this->firstOccurrence.clear();
+        this->secondOccurrence.clear();
+      }
     }
     if (m.start == 4 && m.end == 6) {
       clear_bit(this->wRooks, 7);
@@ -573,9 +591,11 @@ void Chess::MakeMove(Move &m) {
       set_bit(this->bPawns, m.end);
       break;
     }
-    this->firstOccurrence.clear();
-    this->secondOccurrence.clear();
-    this->lastPawnOrTake = 0;
+    if (tracking) {
+      this->firstOccurrence.clear();
+      this->secondOccurrence.clear();
+      this->lastPawnOrTake = 0;
+    }
     break;
   case Move::Piece::B_KNIGHT:
     clear_bit(this->bKnights, m.start);
@@ -590,12 +610,16 @@ void Chess::MakeMove(Move &m) {
     set_bit(this->bRooks, m.end);
     if (this->bCastle && m.start == 63) {
       this->bCastle = false;
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+      if (tracking) {
+        this->firstOccurrence.clear();
+        this->secondOccurrence.clear();
+      }
     } else if (this->bQueenCastle && m.start == 56) {
       this->bQueenCastle = false;
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+      if (tracking) {
+        this->firstOccurrence.clear();
+        this->secondOccurrence.clear();
+      }
     }
     break;
   case Move::Piece::B_QUEEN:
@@ -607,13 +631,17 @@ void Chess::MakeMove(Move &m) {
     set_bit(this->bKing, m.end);
     if (this->bCastle) {
       this->bCastle = false;
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+      if (tracking) {
+        this->firstOccurrence.clear();
+        this->secondOccurrence.clear();
+      }
     }
     if (this->bQueenCastle) {
       this->bQueenCastle = false;
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
+      if (tracking) {
+        this->firstOccurrence.clear();
+        this->secondOccurrence.clear();
+      }
     }
     if (m.start == 60 && m.end == 62) {
       clear_bit(this->bRooks, 63);
@@ -637,7 +665,12 @@ void Chess::MakeMove(Move &m) {
       m.captureType = Move::Piece::W_PAWN;
       clear_bit(this->wPawns, m.end + 8);
     }
-  } else if (m.pieceType < Move::Piece::B_PAWN) {
+  } else if (m.pieceType < Move::Piece::B_PAWN && ((1ULL << m.end) & this->blacks())) {
+    if (tracking) {
+      this->lastPawnOrTake = 0;
+      this->firstOccurrence.clear();
+      this->secondOccurrence.clear();
+    }
     if (get_bit(this->bPawns, m.end)) {
       m.captureType = Move::Piece::B_PAWN;
       clear_bit(this->bPawns, m.end);
@@ -662,7 +695,12 @@ void Chess::MakeMove(Move &m) {
       m.captureType = Move::Piece::B_KING;
       clear_bit(this->bKing, m.end);
     }
-  } else {
+  } else if (m.pieceType > Move::Piece::W_KING && ((1ULL << m.end) & this->whites())) {
+    if (tracking) {
+      this->lastPawnOrTake = 0;
+      this->firstOccurrence.clear();
+      this->secondOccurrence.clear();
+    }
     if (get_bit(this->wPawns, m.end)) {
       m.captureType = Move::Piece::W_PAWN;
       clear_bit(this->wPawns, m.end);
@@ -693,32 +731,26 @@ void Chess::MakeMove(Move &m) {
   } else {
     m.checkType = this->InChecks(Color::WHITE, this->wKing);
   }
-  std::string currIdx = this->BoardIdx();
-  // if (this->firstOccurrence.contains(currIdx)) {
-  //   if (this->secondOccurrence.contains(currIdx)) {
-  //     this->thirdOccurrence = true;
-  //     return;
-  //   }
-  //   this->secondOccurrence.insert(currIdx);
-  //   return;
-  // }
-  // this->firstOccurrence.insert(currIdx);
-  for (auto x : this->firstOccurrence) {
-    if (!currIdx.compare(x)) {
-      for (auto y : this->secondOccurrence) {
-        if (!currIdx.compare(y)) {
-          this->thirdOccurrence = true;
-          return;
+
+  if (tracking) {
+    std::string currIdx = this->BoardIdx();
+    for (const auto x : this->firstOccurrence) {
+      if (!currIdx.compare(x)) {
+        for (const auto y : this->secondOccurrence) {
+          if (!currIdx.compare(y)) {
+            this->thirdOccurrence = true;
+            return;
+          }
         }
+        this->secondOccurrence.emplace_back(currIdx);
+        return;
       }
-      this->secondOccurrence.insert(this->secondOccurrence.begin(), currIdx);
-      return;
     }
+    this->firstOccurrence.emplace_back(currIdx);
   }
-  this->firstOccurrence.insert(this->firstOccurrence.begin(), currIdx);
 }
 
-void Chess::UnMakeMove(const Move &m, const BoardState &bs) {
+void Chess::UnMakeMove(const Move &m, const BoardState &bs, bool tracking) {
   // Move the piece back
   switch (m.pieceType) {
   case Move::Piece::W_PAWN:
@@ -876,14 +908,16 @@ void Chess::UnMakeMove(const Move &m, const BoardState &bs) {
   this->bCastle = bs.bCastle;
   this->bQueenCastle = bs.bQueenCastle;
   this->enPassantIdx = bs.enPassantIdx;
-  this->lastPawnOrTake = bs.lastPawnOrTake;
   this->fullTurns = bs.fullTurns;
-  this->firstOccurrence = bs.firstOccurrence;
-  this->secondOccurrence = bs.secondOccurrence;
-  this->thirdOccurrence = bs.thirdOccurrence;
+  if (tracking) {
+    this->lastPawnOrTake = bs.lastPawnOrTake;
+    this->firstOccurrence = bs.firstOccurrence;
+    this->secondOccurrence = bs.secondOccurrence;
+    this->thirdOccurrence = bs.thirdOccurrence;
+  }
 }
 
-MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
+MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus, bool tracking) {
   MoveCategories moves;
   Chess gameCopy(*this);
   uint64_t currMoves = 0ULL;
@@ -902,8 +936,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         int endIdx = pop_lsb(currMoves);
         Move m(endIdx - 16, endIdx, false, Move::Piece::W_PAWN,
                Move::Promotion::NA);
-        this->MakeMove(m);
-        this->UnMakeMove(m, bs);
+        this->MakeMove(m, tracking);
+        this->UnMakeMove(m, bs, tracking);
         // IDK if double check is possible here
         Add(moves, m);
       }
@@ -913,16 +947,16 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         int endIdx = pop_lsb(currMoves);
         Move m(endIdx - 8, endIdx, false, Move::Piece::W_PAWN,
                Move::Promotion::NA);
-        this->MakeMove(m);
-        this->UnMakeMove(m, bs);
+        this->MakeMove(m, tracking);
+        this->UnMakeMove(m, bs, tracking);
         Add(moves, m);
       }
       while (currMoves) {
         int endIdx = pop_lsb(currMoves);
         for (Move::Promotion p : promotions) {
           Move m(endIdx - 8, endIdx, false, Move::Piece::W_PAWN, p);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -932,16 +966,16 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         int endIdx = pop_lsb(currMoves);
         Move m(endIdx - 7, endIdx, endIdx == this->enPassantIdx,
                Move::Piece::W_PAWN, Move::Promotion::NA);
-        this->MakeMove(m);
-        this->UnMakeMove(m, bs);
+        this->MakeMove(m, tracking);
+        this->UnMakeMove(m, bs, tracking);
         Add(moves, m);
       }
       while (currMoves) {
         int endIdx = pop_lsb(currMoves);
         for (Move::Promotion p : promotions) {
           Move m(endIdx - 7, endIdx, false, Move::Piece::W_PAWN, p);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -951,16 +985,16 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         int endIdx = pop_lsb(currMoves);
         Move m(endIdx - 9, endIdx, endIdx == this->enPassantIdx,
                Move::Piece::W_PAWN, Move::Promotion::NA);
-        this->MakeMove(m);
-        this->UnMakeMove(m, bs);
+        this->MakeMove(m, tracking);
+        this->UnMakeMove(m, bs, tracking);
         Add(moves, m);
       }
       while (currMoves) {
         int endIdx = pop_lsb(currMoves);
         for (Move::Promotion p : promotions) {
           Move m(endIdx - 9, endIdx, false, Move::Piece::W_PAWN, p);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -973,8 +1007,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
           int endIdx = pop_lsb(currMoves);
           Move m(idx, endIdx, false, Move::Piece::W_KNIGHT,
                  Move::Promotion::NA);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -988,8 +1022,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
           int endIdx = pop_lsb(currMoves);
           Move m(idx, endIdx, false, Move::Piece::W_BISHOP,
                  Move::Promotion::NA);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -1002,8 +1036,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         while (currMoves) {
           int endIdx = pop_lsb(currMoves);
           Move m(idx, endIdx, false, Move::Piece::W_ROOK, Move::Promotion::NA);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -1018,8 +1052,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         while (currMoves) {
           int endIdx = pop_lsb(currMoves);
           Move m(idx, endIdx, false, Move::Piece::W_QUEEN, Move::Promotion::NA);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -1031,8 +1065,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
     while (currMoves) {
       int endIdx = pop_lsb(currMoves);
       Move m(idx, endIdx, false, Move::Piece::W_KING, Move::Promotion::NA);
-      this->MakeMove(m);
-      this->UnMakeMove(m, bs);
+      this->MakeMove(m, tracking);
+      this->UnMakeMove(m, bs, tracking);
       Add(moves, m);
     }
     if (this->wCastle && (checkStatus == Move::Check::NO_CHECK) &&
@@ -1040,8 +1074,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         (this->InChecks(Color::WHITE, 0x0000000000000020) ==
          Move::Check::NO_CHECK)) {
       Move m(4, 6, false, Move::Piece::W_KING, Move::Promotion::NA);
-      this->MakeMove(m);
-      this->UnMakeMove(m, bs);
+      this->MakeMove(m, tracking);
+      this->UnMakeMove(m, bs, tracking);
       Add(moves, m);
     }
     if (this->wQueenCastle && (checkStatus == Move::Check::NO_CHECK) &&
@@ -1049,8 +1083,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         (this->InChecks(Color::WHITE, 0x0000000000000008) ==
          Move::Check::NO_CHECK)) {
       Move m(4, 2, false, Move::Piece::W_KING, Move::Promotion::NA);
-      this->MakeMove(m);
-      this->UnMakeMove(m, bs);
+      this->MakeMove(m, tracking);
+      this->UnMakeMove(m, bs, tracking);
       Add(moves, m);
     }
   } else {
@@ -1062,8 +1096,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         int endIdx = pop_lsb(currMoves);
         Move m(endIdx + 16, endIdx, false, Move::Piece::B_PAWN,
                Move::Promotion::NA);
-        this->MakeMove(m);
-        this->UnMakeMove(m, bs);
+        this->MakeMove(m, tracking);
+        this->UnMakeMove(m, bs, tracking);
         // IDK if double check is possible here
         Add(moves, m);
       }
@@ -1073,8 +1107,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         int endIdx = pop_lsb(currMoves);
         for (Move::Promotion p : promotions) {
           Move m(endIdx + 8, endIdx, false, Move::Piece::B_PAWN, p);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -1082,8 +1116,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         int endIdx = pop_lsb(currMoves);
         Move m(endIdx + 8, endIdx, false, Move::Piece::B_PAWN,
                Move::Promotion::NA);
-        this->MakeMove(m);
-        this->UnMakeMove(m, bs);
+        this->MakeMove(m, tracking);
+        this->UnMakeMove(m, bs, tracking);
         Add(moves, m);
       }
       // Take with black pawn on the right
@@ -1092,8 +1126,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         int endIdx = pop_lsb(currMoves);
         for (Move::Promotion p : promotions) {
           Move m(endIdx + 7, endIdx, false, Move::Piece::B_PAWN, p);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -1101,8 +1135,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         int endIdx = pop_lsb(currMoves);
         Move m(endIdx + 7, endIdx, endIdx == this->enPassantIdx,
                Move::Piece::B_PAWN, Move::Promotion::NA);
-        this->MakeMove(m);
-        this->UnMakeMove(m, bs);
+        this->MakeMove(m, tracking);
+        this->UnMakeMove(m, bs, tracking);
         Add(moves, m);
       }
       // Take with black pawn on the left
@@ -1111,8 +1145,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         int endIdx = pop_lsb(currMoves);
         for (Move::Promotion p : promotions) {
           Move m(endIdx + 9, endIdx, false, Move::Piece::B_PAWN, p);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -1120,8 +1154,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         int endIdx = pop_lsb(currMoves);
         Move m(endIdx + 9, endIdx, endIdx == this->enPassantIdx,
                Move::Piece::B_PAWN, Move::Promotion::NA);
-        this->MakeMove(m);
-        this->UnMakeMove(m, bs);
+        this->MakeMove(m, tracking);
+        this->UnMakeMove(m, bs, tracking);
         Add(moves, m);
       }
 
@@ -1133,8 +1167,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
           int endIdx = pop_lsb(currMoves);
           Move m(idx, endIdx, false, Move::Piece::B_KNIGHT,
                  Move::Promotion::NA);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -1148,8 +1182,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
           int endIdx = pop_lsb(currMoves);
           Move m(idx, endIdx, false, Move::Piece::B_BISHOP,
                  Move::Promotion::NA);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -1162,8 +1196,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         while (currMoves) {
           int endIdx = pop_lsb(currMoves);
           Move m(idx, endIdx, false, Move::Piece::B_ROOK, Move::Promotion::NA);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -1178,8 +1212,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         while (currMoves) {
           int endIdx = pop_lsb(currMoves);
           Move m(idx, endIdx, false, Move::Piece::B_QUEEN, Move::Promotion::NA);
-          this->MakeMove(m);
-          this->UnMakeMove(m, bs);
+          this->MakeMove(m, tracking);
+          this->UnMakeMove(m, bs, tracking);
           Add(moves, m);
         }
       }
@@ -1191,8 +1225,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
     while (currMoves) {
       int endIdx = pop_lsb(currMoves);
       Move m(idx, endIdx, false, Move::Piece::B_KING, Move::Promotion::NA);
-      this->MakeMove(m);
-      this->UnMakeMove(m, bs);
+      this->MakeMove(m, tracking);
+      this->UnMakeMove(m, bs, tracking);
       Add(moves, m);
     }
     if (this->bCastle && (checkStatus == Move::Check::NO_CHECK) &&
@@ -1200,8 +1234,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         (this->InChecks(Color::BLACK, 0x2000000000000000) ==
          Move::Check::NO_CHECK)) {
       Move m(60, 62, false, Move::Piece::B_KING, Move::Promotion::NA);
-      this->MakeMove(m);
-      this->UnMakeMove(m, bs);
+      this->MakeMove(m, tracking);
+      this->UnMakeMove(m, bs, tracking);
       Add(moves, m);
     }
     if (this->bQueenCastle && (checkStatus == Move::Check::NO_CHECK) &&
@@ -1209,29 +1243,15 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
         (this->InChecks(Color::BLACK, 0x0800000000000000) ==
          Move::Check::NO_CHECK)) {
       Move m(60, 58, false, Move::Piece::B_KING, Move::Promotion::NA);
-      this->MakeMove(m);
-      this->UnMakeMove(m, bs);
+      this->MakeMove(m, tracking);
+      this->UnMakeMove(m, bs, tracking);
       Add(moves, m);
     }
   }
   return moves;
 }
 
-// New Idea:
-// Perft:
-// * Check depth & legality etc like right now
-// * Call this->PseudoLegalMoves() to get std::tuple<std::vector<Move>,
-// std::vector<Move>, std::vector<Move>, std::vector<Move> >
-// * Each iteration goes:
-//   * this->MakeMove(m); this->perft(depth - 1); this->unMakeMove(m, bs);
-// * Iterate over double checks first
-// * Iterate over checks next
-// * Then iterate over captures (fewer pieces -> fewer nodes later)
-// * Then iterate over all other moves
-
-// std::unordered_map<std::string, std::map<int, uint64_t>> perftResults;
-std::unordered_map<std::string, std::map<int, std::map<int, uint64_t>>>
-    perftResults;
+std::unordered_map<std::string, std::map<int, uint64_t>> perftResults;
 uint64_t Chess::perft(int depth, Move::Check checkType) {
   // Was the last move legal?
   if ((this->turn &&
@@ -1250,49 +1270,38 @@ uint64_t Chess::perft(int depth, Move::Check checkType) {
   if (this->thirdOccurrence) {
     return 0;
   }
+  std::string currIdx = this->BoardIdx();
+  if (perftResults[currIdx].contains(depth)) {
+    return perftResults[currIdx][depth];
+  }
 
+  MoveCategories pMoves = this->PseudoLegalMoves(checkType, false);
+  uint64_t nodes = 0ULL;
   const BoardState bs(
       this->wCastle, this->wQueenCastle, this->bCastle, this->bQueenCastle,
       this->enPassantIdx, this->lastPawnOrTake, this->fullTurns,
       this->firstOccurrence, this->secondOccurrence, this->thirdOccurrence);
-
-  std::string currIdx = this->BoardIdx();
-  int numTimes = 1;
-  for (auto secondTime : this->secondOccurrence) {
-    if (!currIdx.compare(secondTime)) {
-      numTimes = 2;
-      break;
-    }
-  }
-  if (perftResults[currIdx].contains(depth) &&
-      perftResults[currIdx][depth].contains(numTimes)) {
-    return perftResults[currIdx][depth][numTimes];
-  }
-
-  MoveCategories pMoves = this->PseudoLegalMoves(checkType);
-  uint64_t nodes = 0ULL;
   for (Move &m : pMoves.doubleChecks) {
-    this->MakeMove(m);
+    this->MakeMove(m, false);
     nodes += this->perft(depth - 1, Move::DOUBLE_CHECK);
-    this->UnMakeMove(m, bs);
+    this->UnMakeMove(m, bs, false);
   }
   for (Move &m : pMoves.checks) {
-    this->MakeMove(m);
+    this->MakeMove(m, false);
     nodes += this->perft(depth - 1, Move::CHECK);
-    this->UnMakeMove(m, bs);
+    this->UnMakeMove(m, bs, false);
   }
   for (Move &m : pMoves.captures) {
-    this->MakeMove(m);
+    this->MakeMove(m, false);
     nodes += this->perft(depth - 1, Move::NO_CHECK);
-    this->UnMakeMove(m, bs);
+    this->UnMakeMove(m, bs, false);
   }
   for (Move &m : pMoves.etc) {
-    this->MakeMove(m);
+    this->MakeMove(m, false);
     nodes += this->perft(depth - 1, Move::NO_CHECK);
-    this->UnMakeMove(m, bs);
+    this->UnMakeMove(m, bs, false);
   }
-  perftResults[currIdx][depth][numTimes] = nodes;
-  // perftResults[currIdx][depth] = nodes;
+  perftResults[currIdx][depth] = nodes;
 
   return nodes;
 }
