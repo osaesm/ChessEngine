@@ -1,9 +1,14 @@
 #ifndef CHESS_H
 #define CHESS_H
 
+#include <atomic>
 #include <bit>
+#include <cstddef>
 #include <cstdint>
+#include <map>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #define set_bit(b, i) (b |= (1ULL << (i)))
@@ -143,6 +148,27 @@ constexpr int BishopHash(short idx, uint64_t empties, uint64_t opponent) {
 
 enum Color : bool { WHITE = true, BLACK = false };
 
+class PerftResultsThreaded {
+private:
+  std::unordered_map<std::string, std::map<int, uint64_t>> perftResults;
+  mutable std::mutex mutex;
+
+public:
+  void insert(const std::string &key, const int depth, const uint64_t val) {
+    std::lock_guard<std::mutex> lock(mutex);
+    perftResults[key][depth] = val;
+  }
+
+  bool get(const std::string &key, const int depth, uint64_t &val) {
+    std::lock_guard<std::mutex> lock(mutex);
+    if (perftResults.contains(key) && perftResults[key].contains(depth)) {
+      val = perftResults[key][depth];
+      return true;
+    }
+    return false;
+  }
+};
+
 struct Move {
   int start, end;
   bool enPassant;
@@ -190,6 +216,9 @@ struct BoardState {
 
 struct MoveCategories {
   std::vector<Move> doubleChecks, checks, captures, etc;
+  size_t numMoves() {
+    return doubleChecks.size() + checks.size() + captures.size() + etc.size();
+  };
 };
 class Chess {
 protected:
@@ -231,6 +260,10 @@ public:
   void MakeMove(Move &m, bool tracking);
   void UnMakeMove(const Move &m, const BoardState &bs, bool tracking);
   uint64_t perft(int depth, Move::Check checkType);
+  static void perftWorker(Chess currGame, std::vector<Move> moves, int depth,
+                          Move::Check checkType,
+                          std::atomic<uint64_t> &totalNodes);
+  uint64_t perftRecurse(int depth, Move::Check checkType, int numThreads);
 };
 
 #endif

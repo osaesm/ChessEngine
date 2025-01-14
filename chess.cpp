@@ -1,7 +1,11 @@
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
 #include <map>
 #include <memory>
+#include <thread>
 #include <unordered_map>
+#include <vector>
 
 #include "chess.hpp"
 
@@ -665,7 +669,8 @@ void Chess::MakeMove(Move &m, bool tracking) {
       m.captureType = Move::Piece::W_PAWN;
       clear_bit(this->wPawns, m.end + 8);
     }
-  } else if (m.pieceType < Move::Piece::B_PAWN && ((1ULL << m.end) & this->blacks())) {
+  } else if (m.pieceType < Move::Piece::B_PAWN &&
+             ((1ULL << m.end) & this->blacks())) {
     if (tracking) {
       this->lastPawnOrTake = 0;
       this->firstOccurrence.clear();
@@ -695,7 +700,8 @@ void Chess::MakeMove(Move &m, bool tracking) {
       m.captureType = Move::Piece::B_KING;
       clear_bit(this->bKing, m.end);
     }
-  } else if (m.pieceType > Move::Piece::W_KING && ((1ULL << m.end) & this->whites())) {
+  } else if (m.pieceType > Move::Piece::W_KING &&
+             ((1ULL << m.end) & this->whites())) {
     if (tracking) {
       this->lastPawnOrTake = 0;
       this->firstOccurrence.clear();
@@ -917,7 +923,8 @@ void Chess::UnMakeMove(const Move &m, const BoardState &bs, bool tracking) {
   }
 }
 
-MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus, bool tracking) {
+MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
+                                       bool tracking) {
   MoveCategories moves;
   Chess gameCopy(*this);
   uint64_t currMoves = 0ULL;
@@ -1251,7 +1258,8 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus, bool track
   return moves;
 }
 
-std::unordered_map<std::string, std::map<int, uint64_t>> perftResults;
+PerftResultsThreaded perftResults;
+
 uint64_t Chess::perft(int depth, Move::Check checkType) {
   // Was the last move legal?
   if ((this->turn &&
@@ -1271,12 +1279,12 @@ uint64_t Chess::perft(int depth, Move::Check checkType) {
     return 0;
   }
   std::string currIdx = this->BoardIdx();
-  if (perftResults[currIdx].contains(depth)) {
-    return perftResults[currIdx][depth];
+  uint64_t nodes = 0ULL;
+  if (perftResults.get(currIdx, depth, nodes)) {
+    return nodes;
   }
 
   MoveCategories pMoves = this->PseudoLegalMoves(checkType, false);
-  uint64_t nodes = 0ULL;
   const BoardState bs(
       this->wCastle, this->wQueenCastle, this->bCastle, this->bQueenCastle,
       this->enPassantIdx, this->lastPawnOrTake, this->fullTurns,
@@ -1301,7 +1309,65 @@ uint64_t Chess::perft(int depth, Move::Check checkType) {
     nodes += this->perft(depth - 1, Move::NO_CHECK);
     this->UnMakeMove(m, bs, false);
   }
-  perftResults[currIdx][depth] = nodes;
+  perftResults.insert(currIdx, depth, nodes);
 
   return nodes;
+}
+
+void Chess::perftWorker(Chess currGame, std::vector<Move> moves, int depth,
+                        Move::Check checkType,
+                        std::atomic<uint64_t> &totalNodes) {
+  uint64_t localNodes = 0;
+  for (auto &m : moves) {
+    BoardState bs(currGame.wCastle, currGame.wQueenCastle, currGame.bCastle,
+                  currGame.bQueenCastle, currGame.enPassantIdx,
+                  currGame.lastPawnOrTake, currGame.fullTurns,
+                  currGame.firstOccurrence, currGame.secondOccurrence,
+                  currGame.thirdOccurrence);
+    currGame.MakeMove(m, false);
+    localNodes += currGame.perft(depth - 1, m.checkType);
+    currGame.UnMakeMove(m, bs, false);
+  }
+  totalNodes += localNodes;
+}
+
+uint64_t Chess::perftRecurse(int depth, Move::Check checkType, int numThreads) {
+  if (numThreads == 1) {
+    return this->perft(depth, checkType);
+  }
+  MoveCategories m = this->PseudoLegalMoves(checkType, false);
+  size_t numMoves = m.numMoves();
+  std::vector<Move> allMoves;
+  allMoves.reserve(numMoves);
+  allMoves.insert(allMoves.begin(), m.doubleChecks.begin(),
+                  m.doubleChecks.end());
+  allMoves.insert(allMoves.begin() + m.doubleChecks.size(), m.checks.begin(),
+                  m.checks.end());
+  allMoves.insert(allMoves.begin() + m.doubleChecks.size() + m.checks.size(),
+                  m.captures.begin(), m.captures.end());
+  allMoves.insert(allMoves.begin() + m.doubleChecks.size() + m.checks.size() +
+                      m.captures.size(),
+                  m.etc.begin(), m.etc.end());
+  int movesPerThread = (numMoves + numThreads - 1) / numThreads;
+  std::vector<std::thread> threads;
+  std::atomic<uint64_t> totalNodes(0);
+  for (int i = 0; i < numThreads; ++i) {
+    size_t start = i * movesPerThread;
+    size_t end = std::min(start + movesPerThread, numMoves);
+    if (start >= numMoves) {
+      break;
+    }
+    threads.emplace_back(
+        perftWorker, *this,
+        std::vector<Move>(allMoves.begin() + start, allMoves.begin() + end),
+        depth, checkType, std::ref(totalNodes));
+  }
+
+  for (auto &thread : threads) {
+    if (thread.joinable()) {
+      thread.join();
+    }
+  }
+
+  return totalNodes.load();
 }
