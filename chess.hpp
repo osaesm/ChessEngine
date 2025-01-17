@@ -255,7 +255,8 @@ public:
   static void Initialize();
   const std::string BoardIdx();
   const std::string ConvertToFEN();
-  MoveCategories PseudoLegalMoves(const Move::Check checkStatus, const bool tracking);
+  MoveCategories PseudoLegalMoves(const Move::Check checkStatus,
+                                  const bool tracking);
   const Move::Check InChecks(const Color kingColor, const uint64_t kingBoard);
   void MakeMove(Move &m, const bool tracking);
   void UnMakeMove(const Move &m, const BoardState &bs, const bool tracking);

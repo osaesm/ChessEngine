@@ -1,10 +1,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
-#include <map>
-#include <memory>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
 #include "chess.hpp"
@@ -436,7 +433,8 @@ const std::string Chess::ConvertToFEN() {
          std::to_string(this->fullTurns);
 }
 
-const Move::Check Chess::InChecks(const Color kingColor, const uint64_t kingBoard) {
+const Move::Check Chess::InChecks(const Color kingColor,
+                                  const uint64_t kingBoard) {
   uint64_t currEmpties = this->empties();
   if (kingColor == Color::WHITE && kingBoard != this->wKing) {
     currEmpties = (currEmpties | this->wKing) & ~kingBoard;
@@ -756,7 +754,8 @@ void Chess::MakeMove(Move &m, const bool tracking) {
   }
 }
 
-void Chess::UnMakeMove(const Move &m, const BoardState &bs, const bool tracking) {
+void Chess::UnMakeMove(const Move &m, const BoardState &bs,
+                       const bool tracking) {
   // Move the piece back
   switch (m.pieceType) {
   case Move::Piece::W_PAWN:
