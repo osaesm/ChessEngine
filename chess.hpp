@@ -253,17 +253,17 @@ public:
   Chess(const std::string &fenString);
   Chess(const Chess &x);
   static void Initialize();
-  std::string BoardIdx();
-  std::string ConvertToFEN();
-  MoveCategories PseudoLegalMoves(const Move::Check checkStatus, bool tracking);
-  Move::Check InChecks(const Color kingColor, const uint64_t kingBoard);
-  void MakeMove(Move &m, bool tracking);
-  void UnMakeMove(const Move &m, const BoardState &bs, bool tracking);
+  const std::string BoardIdx();
+  const std::string ConvertToFEN();
+  MoveCategories PseudoLegalMoves(const Move::Check checkStatus, const bool tracking);
+  const Move::Check InChecks(const Color kingColor, const uint64_t kingBoard);
+  void MakeMove(Move &m, const bool tracking);
+  void UnMakeMove(const Move &m, const BoardState &bs, const bool tracking);
   uint64_t perft(int depth, Move::Check checkType);
   static void perftWorker(Chess currGame, std::vector<Move> moves, int depth,
                           Move::Check checkType,
                           std::atomic<uint64_t> &totalNodes);
-  uint64_t perftRecurse(int depth, Move::Check checkType, int numThreads);
+  uint64_t perftRecurse(int depth, Move::Check checkType);
 };
 
 #endif

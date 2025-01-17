@@ -292,9 +292,9 @@ Chess::Chess(const Chess &x) {
   this->thirdOccurrence = x.thirdOccurrence;
 }
 
-std::string Chess::BoardIdx() {
+const std::string Chess::BoardIdx() {
   // Creating gameCopy to pop pieces off of
-  std::unique_ptr<Chess> gameCopy(new Chess(*this));
+  Chess gameCopy(Chess(*this));
 
   // First Part
   char board[64];
@@ -303,52 +303,52 @@ std::string Chess::BoardIdx() {
   }
   // Iterate over each piece
   // White Pawns
-  while (gameCopy->wPawns) {
-    board[pop_lsb(gameCopy->wPawns)] = 'P';
+  while (gameCopy.wPawns) {
+    board[pop_lsb(gameCopy.wPawns)] = 'P';
   }
   // Black Pawns
-  while (gameCopy->bPawns) {
-    board[pop_lsb(gameCopy->bPawns)] = 'p';
+  while (gameCopy.bPawns) {
+    board[pop_lsb(gameCopy.bPawns)] = 'p';
   }
   // White Knights
-  while (gameCopy->wKnights) {
-    board[pop_lsb(gameCopy->wKnights)] = 'N';
+  while (gameCopy.wKnights) {
+    board[pop_lsb(gameCopy.wKnights)] = 'N';
   }
   // Black Knights
-  while (gameCopy->bKnights) {
-    board[pop_lsb(gameCopy->bKnights)] = 'n';
+  while (gameCopy.bKnights) {
+    board[pop_lsb(gameCopy.bKnights)] = 'n';
   }
   // White Bishops
-  while (gameCopy->wBishops) {
-    board[pop_lsb(gameCopy->wBishops)] = 'B';
+  while (gameCopy.wBishops) {
+    board[pop_lsb(gameCopy.wBishops)] = 'B';
   }
   // Black Bishops
-  while (gameCopy->bBishops) {
-    board[pop_lsb(gameCopy->bBishops)] = 'b';
+  while (gameCopy.bBishops) {
+    board[pop_lsb(gameCopy.bBishops)] = 'b';
   }
   // White Rooks
-  while (gameCopy->wRooks) {
-    board[pop_lsb(gameCopy->wRooks)] = 'R';
+  while (gameCopy.wRooks) {
+    board[pop_lsb(gameCopy.wRooks)] = 'R';
   }
   // Black Rooks
-  while (gameCopy->bRooks) {
-    board[pop_lsb(gameCopy->bRooks)] = 'r';
+  while (gameCopy.bRooks) {
+    board[pop_lsb(gameCopy.bRooks)] = 'r';
   }
   // White Queens
-  while (gameCopy->wQueens) {
-    board[pop_lsb(gameCopy->wQueens)] = 'Q';
+  while (gameCopy.wQueens) {
+    board[pop_lsb(gameCopy.wQueens)] = 'Q';
   }
   // Black Queens
-  while (gameCopy->bQueens) {
-    board[pop_lsb(gameCopy->bQueens)] = 'q';
+  while (gameCopy.bQueens) {
+    board[pop_lsb(gameCopy.bQueens)] = 'q';
   }
   // White King
-  while (gameCopy->wKing) {
-    board[pop_lsb(gameCopy->wKing)] = 'K';
+  while (gameCopy.wKing) {
+    board[pop_lsb(gameCopy.wKing)] = 'K';
   }
   // Black King
-  while (gameCopy->bKing) {
-    board[pop_lsb(gameCopy->bKing)] = 'k';
+  while (gameCopy.bKing) {
+    board[pop_lsb(gameCopy.bKing)] = 'k';
   }
 
   std::string boardHash = "";
@@ -431,12 +431,12 @@ std::string Chess::BoardIdx() {
   return boardHash;
 }
 
-std::string Chess::ConvertToFEN() {
+const std::string Chess::ConvertToFEN() {
   return this->BoardIdx() + " " + std::to_string(this->lastPawnOrTake) + " " +
          std::to_string(this->fullTurns);
 }
 
-Move::Check Chess::InChecks(const Color kingColor, const uint64_t kingBoard) {
+const Move::Check Chess::InChecks(const Color kingColor, const uint64_t kingBoard) {
   uint64_t currEmpties = this->empties();
   if (kingColor == Color::WHITE && kingBoard != this->wKing) {
     currEmpties = (currEmpties | this->wKing) & ~kingBoard;
@@ -473,7 +473,7 @@ Move::Check Chess::InChecks(const Color kingColor, const uint64_t kingBoard) {
   return checkType;
 }
 
-void Chess::MakeMove(Move &m, bool tracking) {
+void Chess::MakeMove(Move &m, const bool tracking) {
   this->enPassantIdx = -1;
   if (!this->turn) {
     ++this->fullTurns;
@@ -756,7 +756,7 @@ void Chess::MakeMove(Move &m, bool tracking) {
   }
 }
 
-void Chess::UnMakeMove(const Move &m, const BoardState &bs, bool tracking) {
+void Chess::UnMakeMove(const Move &m, const BoardState &bs, const bool tracking) {
   // Move the piece back
   switch (m.pieceType) {
   case Move::Piece::W_PAWN:
@@ -924,7 +924,7 @@ void Chess::UnMakeMove(const Move &m, const BoardState &bs, bool tracking) {
 }
 
 MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
-                                       bool tracking) {
+                                       const bool tracking) {
   MoveCategories moves;
   Chess gameCopy(*this);
   uint64_t currMoves = 0ULL;
@@ -1331,8 +1331,8 @@ void Chess::perftWorker(Chess currGame, std::vector<Move> moves, int depth,
   totalNodes += localNodes;
 }
 
-uint64_t Chess::perftRecurse(int depth, Move::Check checkType, int numThreads) {
-  if (numThreads == 1) {
+uint64_t Chess::perftRecurse(int depth, Move::Check checkType) {
+  if (NUM_THREADS == 1) {
     return this->perft(depth, checkType);
   }
   MoveCategories m = this->PseudoLegalMoves(checkType, false);
@@ -1348,19 +1348,15 @@ uint64_t Chess::perftRecurse(int depth, Move::Check checkType, int numThreads) {
   allMoves.insert(allMoves.begin() + m.doubleChecks.size() + m.checks.size() +
                       m.captures.size(),
                   m.etc.begin(), m.etc.end());
-  int movesPerThread = (numMoves + numThreads - 1) / numThreads;
   std::vector<std::thread> threads;
   std::atomic<uint64_t> totalNodes(0);
-  for (int i = 0; i < numThreads; ++i) {
-    size_t start = i * movesPerThread;
-    size_t end = std::min(start + movesPerThread, numMoves);
-    if (start >= numMoves) {
-      break;
+  for (int i = 0; i < NUM_THREADS; ++i) {
+    std::vector<Move> currMoves;
+    for (int k = i; k < numMoves; k += NUM_THREADS) {
+      currMoves.emplace_back(allMoves[k]);
     }
-    threads.emplace_back(
-        perftWorker, *this,
-        std::vector<Move>(allMoves.begin() + start, allMoves.begin() + end),
-        depth, checkType, std::ref(totalNodes));
+    threads.emplace_back(perftWorker, *this, currMoves, depth, checkType,
+                         std::ref(totalNodes));
   }
 
   for (auto &thread : threads) {
