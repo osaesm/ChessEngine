@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
   Chess game(
       "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
   const auto start = std::chrono::high_resolution_clock::now();
-  uint64_t res = game.perftRecurse(5, Move::Check::NO_CHECK);
+  uint64_t res = game.perftRecurse(6, Move::Check::NO_CHECK);
   const auto end = std::chrono::high_resolution_clock::now();
   const auto total_time =  std::chrono::duration<double, std::milli> (end - start).count() / 1000.0;
   std::cout << res << " nodes" << std::endl
