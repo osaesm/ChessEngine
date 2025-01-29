@@ -923,16 +923,13 @@ void Chess::UnMakeMove(const Move &m, const BoardState &bs,
 }
 
 MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
+                                       const BoardState &bs,
                                        const bool tracking) {
   MoveCategories moves;
   Chess gameCopy(*this);
   uint64_t currMoves = 0ULL;
   uint64_t enPassantMask =
       (this->enPassantIdx == -1) ? 0ULL : (1ULL << this->enPassantIdx);
-  const BoardState bs(
-      this->wCastle, this->wQueenCastle, this->bCastle, this->bQueenCastle,
-      this->enPassantIdx, this->lastPawnOrTake, this->fullTurns,
-      this->firstOccurrence, this->secondOccurrence, this->thirdOccurrence);
   if (this->turn) {
     if (checkStatus != Move::Check::DOUBLE_CHECK) {
       // Advance white pawn two squares
@@ -1257,16 +1254,92 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
   return moves;
 }
 
+MoveCategories Chess::LegalMoves(const Move::Check checkStatus,
+                                 const BoardState &bs, const bool tracking) {
+  MoveCategories pMoves = this->PseudoLegalMoves(checkStatus, bs, tracking);
+
+  if (!pMoves.doubleChecks.empty()) {
+    auto idx = pMoves.doubleChecks.begin();
+    while (idx != pMoves.doubleChecks.end()) {
+      this->MakeMove(*idx, tracking);
+      if ((this->turn && (this->InChecks(Color::BLACK, this->bKing) !=
+                          Move::Check::NO_CHECK)) ||
+          (!this->turn && (this->InChecks(Color::WHITE, this->wKing) !=
+                           Move::Check::NO_CHECK))) {
+        this->UnMakeMove(*idx, bs, tracking);
+        pMoves.doubleChecks.erase(idx);
+        continue;
+      }
+      this->UnMakeMove(*idx, bs, tracking);
+      ++idx;
+    }
+  }
+
+  if (!pMoves.checks.empty()) {
+    auto idx = pMoves.checks.begin();
+    while (idx != pMoves.checks.end()) {
+      this->MakeMove(*idx, tracking);
+      if ((this->turn && (this->InChecks(Color::BLACK, this->bKing) !=
+                          Move::Check::NO_CHECK)) ||
+          (!this->turn && (this->InChecks(Color::WHITE, this->wKing) !=
+                           Move::Check::NO_CHECK))) {
+        this->UnMakeMove(*idx, bs, tracking);
+        pMoves.checks.erase(idx);
+        continue;
+      }
+      this->UnMakeMove(*idx, bs, tracking);
+      ++idx;
+    }
+  }
+
+  if (!pMoves.captures.empty()) {
+    auto idx = pMoves.captures.begin();
+    while (idx != pMoves.captures.end()) {
+      this->MakeMove(*idx, tracking);
+      if ((this->turn && (this->InChecks(Color::BLACK, this->bKing) !=
+                          Move::Check::NO_CHECK)) ||
+          (!this->turn && (this->InChecks(Color::WHITE, this->wKing) !=
+                           Move::Check::NO_CHECK))) {
+        this->UnMakeMove(*idx, bs, tracking);
+        pMoves.captures.erase(idx);
+        continue;
+      }
+      this->UnMakeMove(*idx, bs, tracking);
+      ++idx;
+    }
+  }
+
+  if (!pMoves.etc.empty()) {
+    auto idx = pMoves.etc.begin();
+    while (idx != pMoves.etc.end()) {
+      this->MakeMove(*idx, tracking);
+      if ((this->turn && (this->InChecks(Color::BLACK, this->bKing) !=
+                          Move::Check::NO_CHECK)) ||
+          (!this->turn && (this->InChecks(Color::WHITE, this->wKing) !=
+                           Move::Check::NO_CHECK))) {
+        this->UnMakeMove(*idx, bs, tracking);
+        pMoves.etc.erase(idx);
+        continue;
+      }
+      this->UnMakeMove(*idx, bs, tracking);
+      ++idx;
+    }
+  }
+  return pMoves;
+}
+
 PerftResultsThreaded perftResults;
 
 uint64_t Chess::perft(int depth, Move::Check checkType) {
   // Was the last move legal?
-  if ((this->turn &&
-       (this->InChecks(Color::BLACK, this->bKing) != Move::Check::NO_CHECK)) ||
-      (!this->turn &&
-       (this->InChecks(Color::WHITE, this->wKing) != Move::Check::NO_CHECK))) {
-    return 0;
-  }
+  // if ((this->turn &&
+  //      (this->InChecks(Color::BLACK, this->bKing) != Move::Check::NO_CHECK))
+  //      ||
+  //     (!this->turn &&
+  //      (this->InChecks(Color::WHITE, this->wKing) != Move::Check::NO_CHECK)))
+  //      {
+  //   return 0;
+  // }
 
   // Base Case
   if (depth == 0) {
@@ -1283,27 +1356,27 @@ uint64_t Chess::perft(int depth, Move::Check checkType) {
     return nodes;
   }
 
-  MoveCategories pMoves = this->PseudoLegalMoves(checkType, false);
   const BoardState bs(
       this->wCastle, this->wQueenCastle, this->bCastle, this->bQueenCastle,
       this->enPassantIdx, this->lastPawnOrTake, this->fullTurns,
       this->firstOccurrence, this->secondOccurrence, this->thirdOccurrence);
-  for (Move &m : pMoves.doubleChecks) {
+  MoveCategories moves = this->LegalMoves(checkType, bs, false);
+  for (Move &m : moves.doubleChecks) {
     this->MakeMove(m, false);
     nodes += this->perft(depth - 1, Move::DOUBLE_CHECK);
     this->UnMakeMove(m, bs, false);
   }
-  for (Move &m : pMoves.checks) {
+  for (Move &m : moves.checks) {
     this->MakeMove(m, false);
     nodes += this->perft(depth - 1, Move::CHECK);
     this->UnMakeMove(m, bs, false);
   }
-  for (Move &m : pMoves.captures) {
+  for (Move &m : moves.captures) {
     this->MakeMove(m, false);
     nodes += this->perft(depth - 1, Move::NO_CHECK);
     this->UnMakeMove(m, bs, false);
   }
-  for (Move &m : pMoves.etc) {
+  for (Move &m : moves.etc) {
     this->MakeMove(m, false);
     nodes += this->perft(depth - 1, Move::NO_CHECK);
     this->UnMakeMove(m, bs, false);
@@ -1334,7 +1407,12 @@ uint64_t Chess::perftRecurse(int depth, Move::Check checkType) {
   if (NUM_THREADS == 1) {
     return this->perft(depth, checkType);
   }
-  MoveCategories m = this->PseudoLegalMoves(checkType, false);
+
+  const BoardState bs(
+      this->wCastle, this->wQueenCastle, this->bCastle, this->bQueenCastle,
+      this->enPassantIdx, this->lastPawnOrTake, this->fullTurns,
+      this->firstOccurrence, this->secondOccurrence, this->thirdOccurrence);
+  MoveCategories m = this->LegalMoves(checkType, bs, false);
   size_t numMoves = m.numMoves();
   std::vector<Move> allMoves;
   allMoves.reserve(numMoves);
