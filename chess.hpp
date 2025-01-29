@@ -57,7 +57,7 @@ constexpr uint64_t down_right(uint64_t board) {
   return ((board & ~RANK_1 & ~FILE_H) >> 7);
 }
 
-constexpr int RookHash(short idx, uint64_t empties, uint64_t opponent) {
+constexpr int RookHash(int idx, uint64_t empties, uint64_t opponent) {
   uint64_t leftMask = left(1ULL << idx);
   int leftCount = 1;
   while (leftMask & empties) {
@@ -101,7 +101,7 @@ constexpr int RookHash(short idx, uint64_t empties, uint64_t opponent) {
   return (leftCount << 9) + (upCount << 6) + (rightCount << 3) + downCount;
 }
 
-constexpr int BishopHash(short idx, uint64_t empties, uint64_t opponent) {
+constexpr int BishopHash(int idx, uint64_t empties, uint64_t opponent) {
   uint64_t upLeftMask = up_left(1ULL << idx);
   int upLeftCount = 1;
   while (upLeftMask & empties) {
@@ -259,6 +259,7 @@ public:
                                   const bool tracking);
   MoveCategories LegalMoves(const Move::Check checkStatus, const BoardState& bs, const bool tracking);
   const Move::Check InChecks(const Color kingColor, const uint64_t kingBoard);
+  double eval();
   void MakeMove(Move &m, const bool tracking);
   void UnMakeMove(const Move &m, const BoardState &bs, const bool tracking);
   uint64_t perft(int depth, Move::Check checkType);

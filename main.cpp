@@ -16,9 +16,9 @@
 int main(int argc, char *argv[]) {
   Chess::Initialize();
 
-  // Chess game("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-  Chess game(
-      "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+  Chess game("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+  // Chess game(
+  //     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
   const auto start = std::chrono::high_resolution_clock::now();
   uint64_t res = game.perftRecurse(6, Move::Check::NO_CHECK);
   const auto end = std::chrono::high_resolution_clock::now();
@@ -26,5 +26,6 @@ int main(int argc, char *argv[]) {
   std::cout << res << " nodes" << std::endl
             << std::format("{:.2f}", total_time) << " seconds" << std::endl
             << std::format("{:L}", std::lround(res / total_time)) << " nodes / sec" << std::endl;
+  std::cout << "Board eval is: " << std::format("{:.2f}", game.eval()) << std::endl;
   return 0;
 }

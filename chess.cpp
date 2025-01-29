@@ -1,3 +1,4 @@
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -1443,4 +1444,167 @@ uint64_t Chess::perftRecurse(int depth, Move::Check checkType) {
   }
 
   return totalNodes.load();
+}
+
+double Chess::eval() {
+  double score = 0.0;
+
+  // White pawns
+  const uint64_t rows[6]{RANK_7, RANK_6, RANK_5, RANK_4, RANK_3, RANK_2};
+  const double rowValues[6] = {6,
+                               5.0 / 6 + 1.0 / 2,
+                               5.0 / 6 + 1.0 / 3,
+                               5.0 / 6 + 1.0 / 4,
+                               5.0 / 6 + 1.0 / 5,
+                               5.0 / 6 + 1.0 / 6};
+  for (auto i = 0; i < 6; ++i) {
+    uint64_t currRow = this->wPawns & rows[i];
+    while (currRow) {
+      pop_lsb(currRow);
+      score += rowValues[i];
+    }
+  }
+
+  // White Knights
+  uint64_t wKnights = this->wKnights;
+  while (wKnights) {
+    uint64_t nextMoves = KNIGHT_MOVES[pop_lsb(wKnights)];
+    int moveCount = 0;
+    while (nextMoves) {
+      pop_lsb(nextMoves);
+      ++moveCount;
+    }
+    score += 3 + (moveCount / 7.0);
+  }
+  
+  // White Bishops
+  uint64_t wBishops = this->wBishops;
+  while (wBishops) {
+    int currIdx = pop_lsb(wBishops);
+    uint64_t nextMoves =
+        BISHOP_MOVES[currIdx][BishopHash(currIdx, 0xFFFFFFFFFFFFFFFFULL, 0ULL)];
+    int moveCount = 0;
+    while (nextMoves) {
+      pop_lsb(nextMoves);
+      ++moveCount;
+    }
+    score += 3 + (moveCount / 7.0);
+  }
+
+  // White Rooks
+  uint64_t wRooks = this->wRooks;
+  while (wRooks) {
+    int currIdx = pop_lsb(wRooks);
+    uint64_t nextMoves =
+        ROOK_MOVES[currIdx][RookHash(currIdx, this->empties(), this->blacks())];
+    int moveCount = 0;
+    while (nextMoves) {
+      pop_lsb(nextMoves);
+      ++moveCount;
+    }
+    score += 5 + ((moveCount - 7) / 7.0);
+  }
+
+  // White Queens
+  uint64_t wQueens = this->wQueens;
+  while (wQueens) {
+    int currIdx = pop_lsb(wQueens);
+    uint64_t nextMoves =
+        (BISHOP_MOVES[currIdx]
+                     [BishopHash(currIdx, 0xFFFFFFFFFFFFFFFFULL, 0ULL)]) |
+        (ROOK_MOVES[currIdx]
+                   [RookHash(currIdx, this->empties(), this->blacks())]);
+    int moveCount = 0;
+    while (nextMoves) {
+      pop_lsb(nextMoves);
+      ++moveCount;
+    }
+    score += 9 + (moveCount / 7.0);
+  }
+
+  // White King
+  uint64_t wKing = KING_MOVES[std::countr_zero(this->wKing)];
+  int wKingMoves = 0;
+  while (wKing) {
+    pop_lsb(wKing);
+    ++wKingMoves;
+  }
+  score += (100 + (wKingMoves / 3.0));
+
+  // Black pawns
+  for (auto i = 5; i >= 0; --i) {
+    uint64_t currRow = this->bPawns & rows[i];
+    while (currRow) {
+      pop_lsb(currRow);
+      score -= rowValues[5 - i];
+    }
+  }
+
+  // Black Knights
+  uint64_t bKnights = this->bKnights;
+  while (bKnights) {
+    uint64_t nextMoves = KNIGHT_MOVES[pop_lsb(bKnights)];
+    int moveCount = 0;
+    while (nextMoves) {
+      pop_lsb(nextMoves);
+      ++moveCount;
+    }
+    score -= (3 + (moveCount / 7.0));
+  }
+
+  // Black Bishops
+  uint64_t bBishops = this->bBishops;
+  while (bBishops) {
+    int currIdx = pop_lsb(bBishops);
+    uint64_t nextMoves =
+        BISHOP_MOVES[currIdx][BishopHash(currIdx, 0xFFFFFFFFFFFFFFFFULL, 0ULL)];
+    int moveCount = 0;
+    while (nextMoves) {
+      pop_lsb(nextMoves);
+      ++moveCount;
+    }
+    score -= (3 + (moveCount / 7.0));
+  }
+
+  // Black Rooks
+  uint64_t bRooks = this->bRooks;
+  while (bRooks) {
+    int currIdx = pop_lsb(bRooks);
+    uint64_t nextMoves =
+        ROOK_MOVES[currIdx][RookHash(currIdx, this->empties(), this->whites())];
+    int moveCount = 0;
+    while (nextMoves) {
+      pop_lsb(nextMoves);
+      ++moveCount;
+    }
+    score -= (5 + ((moveCount - 7) / 7.0));
+  }
+
+  // Black Queens
+  uint64_t bQueens = this->bQueens;
+  while (bQueens) {
+    int currIdx = pop_lsb(bQueens);
+    uint64_t nextMoves =
+        (BISHOP_MOVES[currIdx]
+                     [BishopHash(currIdx, 0xFFFFFFFFFFFFFFFFULL, 0ULL)]) |
+        (ROOK_MOVES[currIdx]
+                   [RookHash(currIdx, this->empties(), this->whites())]);
+    int moveCount = 0;
+    while (nextMoves) {
+      pop_lsb(nextMoves);
+      ++moveCount;
+    }
+    score -= (9 + (moveCount / 7.0));
+  }
+
+  // Black King
+  uint64_t bKing = KING_MOVES[std::countr_zero(this->bKing)];
+  int bKingMoves = 0;
+  while (bKing) {
+    pop_lsb(bKing);
+    ++bKingMoves;
+  }
+  score -= (100 + (bKingMoves / 3.0));
+
+  return score;
 }
