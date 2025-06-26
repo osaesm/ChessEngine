@@ -199,6 +199,14 @@ struct Move {
         captureType(NONE), promotionType(prT){};
 };
 
+struct Eval {
+  int mateStatus = -1;
+  double score;
+  Move* m;
+
+  Eval(int mS, double s, Move* m) : mateStatus(mS), score(s), m(m){};
+};
+
 struct BoardState {
   bool wCastle, wQueenCastle, bCastle, bQueenCastle;
   int enPassantIdx;
@@ -255,14 +263,16 @@ public:
   static void Initialize();
   const std::string BoardIdx();
   const std::string ConvertToFEN();
-  MoveCategories PseudoLegalMoves(const Move::Check checkStatus, const BoardState &bs,
-                                  const bool tracking);
-  MoveCategories LegalMoves(const Move::Check checkStatus, const BoardState& bs, const bool tracking);
+  MoveCategories PseudoLegalMoves(const Move::Check checkStatus,
+                                  const BoardState &bs, const bool tracking);
+  MoveCategories LegalMoves(const Move::Check checkStatus, const BoardState &bs,
+                            const bool tracking);
   const Move::Check InChecks(const Color kingColor, const uint64_t kingBoard);
+  Eval BestMove(const int depth, const Move::Check checkType);
   double eval();
   void MakeMove(Move &m, const bool tracking);
   void UnMakeMove(const Move &m, const BoardState &bs, const bool tracking);
-  uint64_t perft(int depth, Move::Check checkType);
+  uint64_t perft(const int depth, const Move::Check checkType);
   static void perftWorker(Chess currGame, std::vector<Move> moves, int depth,
                           Move::Check checkType,
                           std::atomic<uint64_t> &totalNodes);

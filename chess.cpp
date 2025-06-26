@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <iostream>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "chess.hpp"
@@ -923,7 +924,7 @@ void Chess::UnMakeMove(const Move &m, const BoardState &bs,
   }
 }
 
-MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
+MoveCategories Chess::PseudoLegalMoves(const Move::Check checkType,
                                        const BoardState &bs,
                                        const bool tracking) {
   MoveCategories moves;
@@ -932,7 +933,7 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
   uint64_t enPassantMask =
       (this->enPassantIdx == -1) ? 0ULL : (1ULL << this->enPassantIdx);
   if (this->turn) {
-    if (checkStatus != Move::Check::DOUBLE_CHECK) {
+    if (checkType != Move::Check::DOUBLE_CHECK) {
       // Advance white pawn two squares
       currMoves =
           up(up(this->wPawns & RANK_2) & this->empties()) & this->empties();
@@ -1073,7 +1074,7 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
       this->UnMakeMove(m, bs, tracking);
       Add(moves, m);
     }
-    if (this->wCastle && (checkStatus == Move::Check::NO_CHECK) &&
+    if (this->wCastle && (checkType == Move::Check::NO_CHECK) &&
         ((this->empties() & 0x0000000000000060) == 0x0000000000000060) &&
         (this->InChecks(Color::WHITE, 0x0000000000000020) ==
          Move::Check::NO_CHECK)) {
@@ -1082,7 +1083,7 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
       this->UnMakeMove(m, bs, tracking);
       Add(moves, m);
     }
-    if (this->wQueenCastle && (checkStatus == Move::Check::NO_CHECK) &&
+    if (this->wQueenCastle && (checkType == Move::Check::NO_CHECK) &&
         ((this->empties() & 0x000000000000000E) == 0x000000000000000E) &&
         (this->InChecks(Color::WHITE, 0x0000000000000008) ==
          Move::Check::NO_CHECK)) {
@@ -1092,7 +1093,7 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
       Add(moves, m);
     }
   } else {
-    if (checkStatus != Move::Check::DOUBLE_CHECK) {
+    if (checkType != Move::Check::DOUBLE_CHECK) {
       // Advance black pawn two squares
       currMoves =
           down(down(this->bPawns & RANK_7) & this->empties()) & this->empties();
@@ -1233,7 +1234,7 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
       this->UnMakeMove(m, bs, tracking);
       Add(moves, m);
     }
-    if (this->bCastle && (checkStatus == Move::Check::NO_CHECK) &&
+    if (this->bCastle && (checkType == Move::Check::NO_CHECK) &&
         ((this->empties() & 0x6000000000000000) == 0x6000000000000000) &&
         (this->InChecks(Color::BLACK, 0x2000000000000000) ==
          Move::Check::NO_CHECK)) {
@@ -1242,7 +1243,7 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
       this->UnMakeMove(m, bs, tracking);
       Add(moves, m);
     }
-    if (this->bQueenCastle && (checkStatus == Move::Check::NO_CHECK) &&
+    if (this->bQueenCastle && (checkType == Move::Check::NO_CHECK) &&
         ((this->empties() & 0x0E00000000000000) == 0x0E00000000000000) &&
         (this->InChecks(Color::BLACK, 0x0800000000000000) ==
          Move::Check::NO_CHECK)) {
@@ -1255,9 +1256,9 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
   return moves;
 }
 
-MoveCategories Chess::LegalMoves(const Move::Check checkStatus,
+MoveCategories Chess::LegalMoves(const Move::Check checkType,
                                  const BoardState &bs, const bool tracking) {
-  MoveCategories pMoves = this->PseudoLegalMoves(checkStatus, bs, tracking);
+  MoveCategories pMoves = this->PseudoLegalMoves(checkType, bs, tracking);
 
   if (!pMoves.doubleChecks.empty()) {
     auto idx = pMoves.doubleChecks.begin();
@@ -1331,7 +1332,7 @@ MoveCategories Chess::LegalMoves(const Move::Check checkStatus,
 
 PerftResultsThreaded perftResults;
 
-uint64_t Chess::perft(int depth, Move::Check checkType) {
+uint64_t Chess::perft(const int depth, const Move::Check checkType) {
   // Was the last move legal?
   // if ((this->turn &&
   //      (this->InChecks(Color::BLACK, this->bKing) != Move::Check::NO_CHECK))
@@ -1607,4 +1608,43 @@ double Chess::eval() {
   score -= (100 + (bKingMoves / 3.0));
 
   return score;
+}
+
+// assume depth is even
+Eval Chess::BestMove(const int depth, const Move::Check checkType) {
+  const BoardState bs(
+      this->wCastle, this->wQueenCastle, this->bCastle, this->bQueenCastle,
+      this->enPassantIdx, this->lastPawnOrTake, this->fullTurns,
+      this->firstOccurrence, this->secondOccurrence, this->thirdOccurrence);
+  MoveCategories moves = this->LegalMoves(checkType, bs, true);
+  if (moves.numMoves() == 0) {
+    if (checkType == Move::NO_CHECK) {
+      return Eval(-1, 0, nullptr);
+    }
+    else {
+      return Eval(0, this->turn ? 1000000000 : -1000000000, nullptr);
+    }
+  }
+  std::vector<std::pair<double, Move>> moveScores;
+  std::vector allMoves = moves.doubleChecks;
+  allMoves.insert(allMoves.end(), moves.checks.begin(), moves.checks.end());
+  allMoves.insert(allMoves.end(), moves.captures.begin(), moves.captures.end());
+  allMoves.insert(allMoves.end(), moves.etc.begin(), moves.etc.end());
+  for (Move& m : allMoves) {
+    this->MakeMove(m, true);
+    double score(this->eval());
+    this->UnMakeMove(m, bs, true);
+    // Place the (score, Move) pair into a sorted vector
+    bool addedMove = false;
+    for (auto it = moveScores.begin(); it != moveScores.end(); ++it) {
+      if ((this->turn && it->first < score) || (!this->turn && it->first > score)) {
+        moveScores.emplace(it, std::pair<double, Move>(score, m));
+        addedMove = true;
+        break;
+      }
+    }
+    if (!addedMove) {
+      moveScores.emplace_back(std::pair<double, Move>(score, m));
+    }
+  }
 }
