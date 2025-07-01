@@ -2,3 +2,5 @@
 .vscode
 build
 output*
+neuralnets/venv
+neuralnets/.ipynb_checkpoints
