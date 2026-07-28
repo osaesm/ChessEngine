@@ -188,9 +188,9 @@ void PerftTests() {
 
   std::vector<bool> tests{
       PerftTest1(),
-      // PerftTest2(),
+      PerftTest2(),
       PerftTest3(),
-      // PerftTest4(),
+      PerftTest4(),
       PerftTest5(),
   };
   for (auto x : tests) {
