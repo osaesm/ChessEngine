@@ -146,7 +146,7 @@ constexpr int BishopHash(short idx, uint64_t empties, uint64_t opponent) {
          downLeftCount;
 }
 
-enum Color : bool { WHITE = true, BLACK = false };
+enum class Color { WHITE, BLACK };
 
 class PerftResultsThreaded {
 private:

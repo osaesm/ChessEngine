@@ -441,13 +441,13 @@ const Move::Check Chess::InChecks(const Color kingColor,
   } else if (kingColor == Color::BLACK && kingBoard != this->bKing) {
     currEmpties = (currEmpties | this->bKing) & ~kingBoard;
   }
-  uint64_t opponent = kingColor ? this->blacks() : this->whites();
-  uint64_t oppRooks = kingColor ? this->bRooks : this->wRooks;
-  uint64_t oppBishops = kingColor ? this->bBishops : this->wBishops;
-  uint64_t oppKnights = kingColor ? this->bKnights : this->wKnights;
-  uint64_t oppQueens = kingColor ? this->bQueens : this->wQueens;
-  uint64_t oppPawns = kingColor ? this->bPawns : this->wPawns;
-  uint64_t oppKing = kingColor ? this->bKing : this->wKing;
+  uint64_t opponent = (kingColor == Color::WHITE) ? this->blacks() : this->whites();
+  uint64_t oppRooks = (kingColor == Color::WHITE) ? this->bRooks : this->wRooks;
+  uint64_t oppBishops = (kingColor == Color::WHITE) ? this->bBishops : this->wBishops;
+  uint64_t oppKnights = (kingColor == Color::WHITE) ? this->bKnights : this->wKnights;
+  uint64_t oppQueens = (kingColor == Color::WHITE) ? this->bQueens : this->wQueens;
+  uint64_t oppPawns = (kingColor == Color::WHITE) ? this->bPawns : this->wPawns;
+  uint64_t oppKing = (kingColor == Color::WHITE) ? this->bKing : this->wKing;
 
   const uint64_t kingIdx = std::countr_zero(kingBoard);
   uint64_t checkMasks[5] = {
@@ -456,7 +456,7 @@ const Move::Check Chess::InChecks(const Color kingColor,
       (ROOK_MOVES[kingIdx][RookHash(kingIdx, currEmpties, opponent)] &
        (oppRooks | oppQueens)),
       (KNIGHT_MOVES[kingIdx] & oppKnights), (KING_MOVES[kingIdx] & oppKing),
-      (PAWN_TAKES[kingIdx][kingColor ? 0 : 1] & oppPawns)};
+      (PAWN_TAKES[kingIdx][(kingColor == Color::WHITE) ? 0 : 1] & oppPawns)};
   Move::Check checkType = Move::Check::NO_CHECK;
   for (int i = 0; i < 5; ++i) {
     while (checkMasks[i]) {
@@ -473,13 +473,13 @@ const Move::Check Chess::InChecks(const Color kingColor,
 
 void Chess::MakeMove(Move &m, const bool tracking) {
   this->enPassantIdx = -1;
-  if (!this->turn) {
+  if (this->turn != Color::WHITE) {
     ++this->fullTurns;
   }
   if (tracking) {
     ++this->lastPawnOrTake;
   }
-  this->turn = (Color)(!this->turn);
+  this->turn = (this->turn == Color::WHITE) ? Color::BLACK : Color::WHITE;
   // Clear start square and fill end square
   // Promote Pawns
   // Castle
@@ -907,7 +907,7 @@ void Chess::UnMakeMove(const Move &m, const BoardState &bs,
     break;
   }
   // Reset the Board State (Castling rights, en passant index, etc.)
-  this->turn = (Color)(!this->turn);
+  this->turn = (this->turn == Color::WHITE) ? Color::BLACK : Color::WHITE;
   this->wCastle = bs.wCastle;
   this->wQueenCastle = bs.wQueenCastle;
   this->bCastle = bs.bCastle;
@@ -933,7 +933,7 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
       this->wCastle, this->wQueenCastle, this->bCastle, this->bQueenCastle,
       this->enPassantIdx, this->lastPawnOrTake, this->fullTurns,
       this->firstOccurrence, this->secondOccurrence, this->thirdOccurrence);
-  if (this->turn) {
+  if (this->turn == Color::WHITE) {
     if (checkStatus != Move::Check::DOUBLE_CHECK) {
       // Advance white pawn two squares
       currMoves =
@@ -1261,9 +1261,9 @@ PerftResultsThreaded perftResults;
 
 uint64_t Chess::perft(int depth, Move::Check checkType) {
   // Was the last move legal?
-  if ((this->turn &&
+  if ((this->turn == Color::WHITE &&
        (this->InChecks(Color::BLACK, this->bKing) != Move::Check::NO_CHECK)) ||
-      (!this->turn &&
+      (this->turn != Color::WHITE &&
        (this->InChecks(Color::WHITE, this->wKing) != Move::Check::NO_CHECK))) {
     return 0;
   }
