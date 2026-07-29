@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <latch>
 #include <vector>
 
 #include "chess.hpp"
