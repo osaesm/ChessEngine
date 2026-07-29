@@ -1,3 +1,4 @@
+// chess.hpp
 #ifndef CHESS_H
 #define CHESS_H
 
@@ -156,20 +157,47 @@ constexpr int BishopHash(short idx, uint64_t empties, uint64_t opponent) {
 
 enum class Color { WHITE, BLACK };
 
+// ------------------------------------------------------------------
+// Random number generators for Zobrist keys
+// ------------------------------------------------------------------
+inline uint64_t splitmix64(uint64_t &state) {
+  state += 0x9e3779b97f4a7c15ULL;
+  uint64_t z = state;
+  z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
+  z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
+  return z ^ (z >> 31);
+}
+
+inline uint64_t xoshiro256pp(uint64_t s[4]) {
+  const uint64_t result = std::rotl(s[0] + s[3], 23) + s[0];
+  const uint64_t t = s[1] << 17;
+  s[2] ^= s[0];
+  s[3] ^= s[1];
+  s[1] ^= s[2];
+  s[0] ^= s[3];
+  s[2] ^= t;
+  s[3] = std::rotl(s[3], 45);
+  return result;
+}
+
 // Thread-local cache (no mutex needed – each thread has its own instance)
 class PerftCache {
 private:
-  std::unordered_map<std::string, std::map<int, uint64_t>> perftResults;
+  std::unordered_map<uint64_t, std::map<int, uint64_t>> perftResults;
 
 public:
-  void insert(const std::string &key, const int depth, const uint64_t val) {
+  void insert(uint64_t key, int depth, uint64_t val) {
     perftResults[key][depth] = val;
   }
 
-  bool get(const std::string &key, const int depth, uint64_t &val) {
-    if (perftResults.contains(key) && perftResults[key].contains(depth)) {
-      val = perftResults[key][depth];
-      return true;
+  bool get(uint64_t key, int depth, uint64_t &val) {
+    auto it = perftResults.find(key);
+    if (it != perftResults.end()) {
+      auto it2 = it->second.find(depth);
+      if (it2 != it->second.end()) {
+        val = it2->second;
+        return true;
+      }
     }
     return false;
   }
@@ -212,12 +240,14 @@ struct BoardState {
   int fullTurns;
   std::vector<std::string> firstOccurrence, secondOccurrence;
   bool thirdOccurrence;
+  uint64_t hash;
   BoardState(bool wC, bool wQC, bool bC, bool bQC, int ePI, short lPOT, int fT,
              std::vector<std::string> &fO, std::vector<std::string> &sO,
-             bool tO)
+             bool tO, uint64_t h)
       : wCastle(wC), wQueenCastle(wQC), bCastle(bC), bQueenCastle(bQC),
         enPassantIdx(ePI), lastPawnOrTake(lPOT), fullTurns(fT),
-        firstOccurrence(fO), secondOccurrence(sO), thirdOccurrence(tO) {};
+        firstOccurrence(fO), secondOccurrence(sO), thirdOccurrence(tO),
+        hash(h) {};
 };
 
 struct MoveCategories {
@@ -241,6 +271,7 @@ protected:
   std::vector<std::string> firstOccurrence;
   std::vector<std::string> secondOccurrence;
   bool thirdOccurrence;
+  uint64_t hash; // Zobrist hash
 
   static uint64_t PAWN_TAKES[64][2];
   static uint64_t KNIGHT_MOVES[64];
@@ -248,6 +279,12 @@ protected:
   static uint64_t ROOK_MOVES[64][4096];
   static uint64_t BISHOP_MOVES[64][4096];
   static Move::Promotion promotions[4];
+
+  // Zobrist keys
+  static uint64_t zobristPiece[64][12];   // 12 piece types (0-5 white, 6-11 black)
+  static uint64_t zobristEnPassant[8];    // one per file
+  static uint64_t zobristCastle[4];       // WK, WQ, BK, BQ
+  static uint64_t zobristBlackToMove;     // XOR when black's turn
 
   constexpr uint64_t whites() const {
     return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing);
@@ -276,6 +313,7 @@ public:
 
 private:
   Move::Check checkAfterMove(const Move &m) const;
+  static void InitializeZobrist();
 
   template <Color C>
   void generatePseudoLegalMoves(const Move::Check checkStatus,
