@@ -1479,9 +1479,9 @@ MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
 }
 
 // ------------------------------------------------------------------
-// Perft & multithreading – unchanged except for MoveCategories use
+// Perft & multithreading – now uses thread-local cache
 // ------------------------------------------------------------------
-PerftResultsThreaded perftResults;
+thread_local PerftCache perftResults; // each thread has its own private cache
 
 uint64_t Chess::perft(int depth, Move::Check checkType) {
   if ((turn == Color::WHITE &&

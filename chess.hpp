@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -14,16 +13,14 @@
 // ------------------------------------------------------------------
 // Refactored bit operations: macros replaced with constexpr functions
 // ------------------------------------------------------------------
-inline constexpr void set_bit(uint64_t &b, int i) noexcept {
-    b |= (1ULL << i);
-}
+inline constexpr void set_bit(uint64_t &b, int i) noexcept { b |= (1ULL << i); }
 
 inline constexpr bool get_bit(uint64_t b, int i) noexcept {
-    return (b >> i) & 1ULL;
+  return (b >> i) & 1ULL;
 }
 
 inline constexpr void clear_bit(uint64_t &b, int i) noexcept {
-    b &= ~(1ULL << i);
+  b &= ~(1ULL << i);
 }
 
 inline int pop_lsb(uint64_t &b) {
@@ -159,19 +156,17 @@ constexpr int BishopHash(short idx, uint64_t empties, uint64_t opponent) {
 
 enum class Color { WHITE, BLACK };
 
-class PerftResultsThreaded {
+// Thread-local cache (no mutex needed – each thread has its own instance)
+class PerftCache {
 private:
   std::unordered_map<std::string, std::map<int, uint64_t>> perftResults;
-  mutable std::mutex mutex;
 
 public:
   void insert(const std::string &key, const int depth, const uint64_t val) {
-    std::lock_guard<std::mutex> lock(mutex);
     perftResults[key][depth] = val;
   }
 
   bool get(const std::string &key, const int depth, uint64_t &val) {
-    std::lock_guard<std::mutex> lock(mutex);
     if (perftResults.contains(key) && perftResults[key].contains(depth)) {
       val = perftResults[key][depth];
       return true;
@@ -207,7 +202,7 @@ struct Move {
   enum Promotion { QUEEN, ROOK, KNIGHT, BISHOP, NA } promotionType;
   Move(int s, int e, bool eP, Piece pT, Promotion prT)
       : start(s), end(e), enPassant(eP), checkType(NO_CHECK), pieceType(pT),
-        captureType(NONE), promotionType(prT){};
+        captureType(NONE), promotionType(prT) {};
 };
 
 struct BoardState {
@@ -222,7 +217,7 @@ struct BoardState {
              bool tO)
       : wCastle(wC), wQueenCastle(wQC), bCastle(bC), bQueenCastle(bQC),
         enPassantIdx(ePI), lastPawnOrTake(lPOT), fullTurns(fT),
-        firstOccurrence(fO), secondOccurrence(sO), thirdOccurrence(tO){};
+        firstOccurrence(fO), secondOccurrence(sO), thirdOccurrence(tO) {};
 };
 
 struct MoveCategories {
@@ -232,7 +227,7 @@ struct MoveCategories {
   };
 };
 
-void Add(MoveCategories &mC, Move &m);   // forward declaration
+void Add(MoveCategories &mC, Move &m); // forward declaration
 
 class Chess {
 protected:
@@ -268,8 +263,9 @@ public:
   static void Initialize();
   const std::string BoardIdx();
   const std::string ConvertToFEN();
-  MoveCategories PseudoLegalMoves(const Move::Check checkStatus);  // no tracking
-  const Move::Check InChecks(const Color kingColor, const uint64_t kingBoard) const;
+  MoveCategories PseudoLegalMoves(const Move::Check checkStatus); // no tracking
+  const Move::Check InChecks(const Color kingColor,
+                             const uint64_t kingBoard) const;
   void MakeMove(Move &m, const bool tracking);
   void UnMakeMove(const Move &m, const BoardState &bs, const bool tracking);
   uint64_t perft(int depth, Move::Check checkType);
@@ -281,7 +277,7 @@ public:
 private:
   Move::Check checkAfterMove(const Move &m) const;
 
-  template<Color C>
+  template <Color C>
   void generatePseudoLegalMoves(const Move::Check checkStatus,
                                 MoveCategories &moves) const;
 };
