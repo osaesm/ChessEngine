@@ -2,7 +2,6 @@
 #ifndef CHESS_H
 #define CHESS_H
 
-#include <atomic>
 #include <bit>
 #include <cstddef>
 #include <cstdint>
@@ -11,6 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "thread_pool.hpp"
 // ------------------------------------------------------------------
 // Refactored bit operations: macros replaced with constexpr functions
 // ------------------------------------------------------------------
@@ -354,13 +354,13 @@ public:
   void MakeMove(Move &m, const bool tracking);
   void UnMakeMove(const Move &m, const BoardState &bs, const bool tracking);
   uint64_t perft(int depth, Move::Check checkType);
-  static void perftWorker(Chess currGame, std::vector<Move> moves, int depth,
-                          Move::Check checkType,
-                          std::atomic<uint64_t> &totalNodes);
   uint64_t perftRecurse(int depth, Move::Check checkType);
 
   // For searching: check if current position repeats (tracking must be enabled)
   bool isRepetition() const;
+
+  // Thread pool access (static, initialised on first use)
+  static ThreadPool &getThreadPool();
 
 private:
   Move::Check checkAfterMove(const Move &m) const;

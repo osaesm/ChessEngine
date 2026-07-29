@@ -9,9 +9,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -march=native -mtune=native -
 set(NUM_THREADS 8)
 add_compile_definitions(NUM_THREADS=${NUM_THREADS})
 
-# ----- Shared library (chess engine) -----
-# Only chess.cpp is compiled once and reused
+# ----- Shared libraries (thread pool & chess engine) -----
+add_library(thread_pool STATIC thread_pool.hpp thread_pool.cpp)
 add_library(chess_core STATIC chess.hpp chess.cpp)
+
+# chess_core depends on thread_pool
+target_link_libraries(chess_core PUBLIC thread_pool)
 
 # ----- Executables -----
 add_executable(chess main.cpp)

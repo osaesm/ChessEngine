@@ -2,7 +2,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
-#include <thread>
 #include <vector>
 
 #include "chess.hpp"
@@ -38,6 +37,9 @@ void Add(MoveCategories &mC, Move &m) {
   }
 }
 
+// ------------------------------------------------------------------
+// Zobrist initialisation
+// ------------------------------------------------------------------
 void Chess::InitializeZobrist() {
   uint64_t seed = 1234567890123456789ULL;
   uint64_t s[4];
@@ -1596,20 +1598,9 @@ uint64_t Chess::perft(int depth, Move::Check checkType) {
   return nodes;
 }
 
-void Chess::perftWorker(Chess currGame, std::vector<Move> moves, int depth,
-                        Move::Check checkType,
-                        std::atomic<uint64_t> &totalNodes) {
-  uint64_t localNodes = 0;
-  for (auto &m : moves) {
-    BoardState bs(currGame.wCastle, currGame.wQueenCastle, currGame.bCastle,
-                  currGame.bQueenCastle, currGame.enPassantIdx,
-                  currGame.lastPawnOrTake, currGame.fullTurns, currGame.hash,
-                  repTracker.moveCounter, repTracker.repetitionStart);
-    currGame.MakeMove(m, false);
-    localNodes += currGame.perft(depth - 1, m.checkType);
-    currGame.UnMakeMove(m, bs, false);
-  }
-  totalNodes += localNodes;
+ThreadPool &Chess::getThreadPool() {
+  static ThreadPool pool(NUM_THREADS);
+  return pool;
 }
 
 uint64_t Chess::perftRecurse(int depth, Move::Check checkType) {
@@ -1625,17 +1616,35 @@ uint64_t Chess::perftRecurse(int depth, Move::Check checkType) {
   allMoves.insert(allMoves.end(), m.captures.begin(), m.captures.end());
   allMoves.insert(allMoves.end(), m.etc.begin(), m.etc.end());
 
-  std::vector<std::thread> threads;
   std::atomic<uint64_t> totalNodes(0);
+  std::latch done(NUM_THREADS);
+  ThreadPool &pool = getThreadPool();
+
   for (int i = 0; i < NUM_THREADS; ++i) {
     std::vector<Move> currMoves;
-    for (int k = i; k < numMoves; k += NUM_THREADS)
+    for (int k = i; k < static_cast<int>(numMoves); k += NUM_THREADS)
       currMoves.emplace_back(allMoves[k]);
-    threads.emplace_back(perftWorker, *this, currMoves, depth, checkType,
-                         std::ref(totalNodes));
+
+    // Capture everything needed by the worker
+    pool.enqueue([this, currMoves = std::move(currMoves), depth, checkType,
+                  &totalNodes, &done]() {
+      Chess currGame(*this); // thread‑local copy of the board
+      uint64_t localNodes = 0;
+      for (Move move : currMoves) { // mutable copy
+        BoardState bs(currGame.wCastle, currGame.wQueenCastle, currGame.bCastle,
+                      currGame.bQueenCastle, currGame.enPassantIdx,
+                      currGame.lastPawnOrTake, currGame.fullTurns,
+                      currGame.hash, repTracker.moveCounter,
+                      repTracker.repetitionStart);
+        currGame.MakeMove(move, false);
+        localNodes += currGame.perft(depth - 1, move.checkType);
+        currGame.UnMakeMove(move, bs, false);
+      }
+      totalNodes += localNodes;
+      done.count_down();
+    });
   }
-  for (auto &t : threads)
-    if (t.joinable())
-      t.join();
+
+  done.wait(); // wait for all tasks to finish
   return totalNodes.load();
 }
