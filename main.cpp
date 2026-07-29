@@ -7,7 +7,6 @@
 
 /**
  * TODO:
- * - Multithread perft
  * - Create an eval function
  *   - minimax, maybe NN/CNN, BFS vs DFS?
  * - Store previous results with indexes [Board idx][depth] = #

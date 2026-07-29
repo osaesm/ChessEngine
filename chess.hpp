@@ -26,8 +26,6 @@ inline constexpr void clear_bit(uint64_t &b, int i) noexcept {
     b &= ~(1ULL << i);
 }
 
-// ------------------------------------------------------------------
-
 inline int pop_lsb(uint64_t &b) {
   int i = std::countr_zero(b);
   b &= (b - 1);
@@ -249,7 +247,6 @@ protected:
   std::vector<std::string> secondOccurrence;
   bool thirdOccurrence;
 
-  // 0: white takes, 1: black takes
   static uint64_t PAWN_TAKES[64][2];
   static uint64_t KNIGHT_MOVES[64];
   static uint64_t KING_MOVES[64];
@@ -257,13 +254,13 @@ protected:
   static uint64_t BISHOP_MOVES[64][4096];
   static Move::Promotion promotions[4];
 
-  constexpr uint64_t whites() {
+  constexpr uint64_t whites() const {
     return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing);
-  };
-  constexpr uint64_t blacks() {
+  }
+  constexpr uint64_t blacks() const {
     return (bPawns | bKnights | bBishops | bRooks | bQueens | bKing);
-  };
-  constexpr uint64_t empties() { return ~(whites() | blacks()); };
+  }
+  constexpr uint64_t empties() const { return ~(whites() | blacks()); }
 
 public:
   Chess(const std::string &fenString);
@@ -271,9 +268,8 @@ public:
   static void Initialize();
   const std::string BoardIdx();
   const std::string ConvertToFEN();
-  MoveCategories PseudoLegalMoves(const Move::Check checkStatus,
-                                  const bool tracking);
-  const Move::Check InChecks(const Color kingColor, const uint64_t kingBoard);
+  MoveCategories PseudoLegalMoves(const Move::Check checkStatus);  // no tracking
+  const Move::Check InChecks(const Color kingColor, const uint64_t kingBoard) const;
   void MakeMove(Move &m, const bool tracking);
   void UnMakeMove(const Move &m, const BoardState &bs, const bool tracking);
   uint64_t perft(int depth, Move::Check checkType);
@@ -283,304 +279,11 @@ public:
   uint64_t perftRecurse(int depth, Move::Check checkType);
 
 private:
-  // Colour‑aware helper to eliminate the previous 250‑line duplication.
-template<Color C>
-MoveCategories generatePseudoLegalMoves(const Move::Check checkStatus,
-                                        bool tracking,
-                                        const BoardState &bs) {
-    MoveCategories moves;
-    Chess gameCopy(*this);
-    uint64_t currMoves = 0ULL;
-    const uint64_t enPassantMask =
-        (this->enPassantIdx == -1) ? 0ULL : (1ULL << this->enPassantIdx);
+  Move::Check checkAfterMove(const Move &m) const;
 
-    // Colour‑dependent constants
-    constexpr Color opponentColor = (C == Color::WHITE) ? Color::BLACK : Color::WHITE;
-    constexpr int forwardStep = (C == Color::WHITE) ? 8 : -8;
-    constexpr uint64_t startRank = (C == Color::WHITE) ? RANK_2 : RANK_7;
-    constexpr uint64_t promoRank = (C == Color::WHITE) ? RANK_8 : RANK_1;
-
-    // Piece enums
-    constexpr Move::Piece piecePawn   = (C == Color::WHITE) ? Move::Piece::W_PAWN   : Move::Piece::B_PAWN;
-    constexpr Move::Piece pieceKnight = (C == Color::WHITE) ? Move::Piece::W_KNIGHT : Move::Piece::B_KNIGHT;
-    constexpr Move::Piece pieceBishop = (C == Color::WHITE) ? Move::Piece::W_BISHOP : Move::Piece::B_BISHOP;
-    constexpr Move::Piece pieceRook   = (C == Color::WHITE) ? Move::Piece::W_ROOK   : Move::Piece::B_ROOK;
-    constexpr Move::Piece pieceQueen  = (C == Color::WHITE) ? Move::Piece::W_QUEEN  : Move::Piece::B_QUEEN;
-    constexpr Move::Piece pieceKing   = (C == Color::WHITE) ? Move::Piece::W_KING   : Move::Piece::B_KING;
-
-    // References to our pieces in the copy (consumed by pop_lsb)
-    uint64_t &myPawns   = (C == Color::WHITE) ? gameCopy.wPawns   : gameCopy.bPawns;
-    uint64_t &myKnights = (C == Color::WHITE) ? gameCopy.wKnights : gameCopy.bKnights;
-    uint64_t &myBishops = (C == Color::WHITE) ? gameCopy.wBishops : gameCopy.bBishops;
-    uint64_t &myRooks   = (C == Color::WHITE) ? gameCopy.wRooks   : gameCopy.bRooks;
-    uint64_t &myQueens  = (C == Color::WHITE) ? gameCopy.wQueens  : gameCopy.bQueens;
-    uint64_t &myKing    = (C == Color::WHITE) ? gameCopy.wKing    : gameCopy.bKing;
-
-    // Opponent / own bitboards (from the actual board, not the copy)
-    uint64_t opponentBB = (C == Color::WHITE) ? this->blacks() : this->whites();
-    uint64_t ownPieces  = (C == Color::WHITE) ? this->whites() : this->blacks();
-    uint64_t emptiesBB  = this->empties();
-
-    // Lambda helpers to choose direction
-    auto forward = [](uint64_t b) constexpr {
-        if constexpr (C == Color::WHITE) return up(b);
-        else return down(b);
-    };
-    auto captureLeft = [](uint64_t b) constexpr {
-        if constexpr (C == Color::WHITE) return up_left(b);
-        else return down_left(b);
-    };
-    auto captureRight = [](uint64_t b) constexpr {
-        if constexpr (C == Color::WHITE) return up_right(b);
-        else return down_right(b);
-    };
-
-    if (checkStatus != Move::Check::DOUBLE_CHECK) {
-        // ---------- Pawn moves ----------
-        // Double push: intermediate and destination must be empty.
-        // Original: up(up(wPawns & RANK_2) & empties()) & empties()
-        currMoves = forward( forward(myPawns & startRank) & emptiesBB ) & emptiesBB;
-        while (currMoves) {
-            int endIdx = pop_lsb(currMoves);
-            int startIdx = endIdx - 2 * forwardStep;
-            Move m(startIdx, endIdx, false, piecePawn, Move::Promotion::NA);
-            this->MakeMove(m, tracking);
-            this->UnMakeMove(m, bs, tracking);
-            Add(moves, m);
-        }
-
-        // Single push
-        currMoves = forward(myPawns) & emptiesBB;
-        if constexpr (C == Color::WHITE) {
-            // Non‑promotions first
-            while (currMoves & ~promoRank) {
-                int endIdx = pop_lsb(currMoves);
-                Move m(endIdx - forwardStep, endIdx, false, piecePawn,
-                       Move::Promotion::NA);
-                this->MakeMove(m, tracking);
-                this->UnMakeMove(m, bs, tracking);
-                Add(moves, m);
-            }
-            // Promotions
-            while (currMoves) {
-                int endIdx = pop_lsb(currMoves);
-                for (Move::Promotion p : promotions) {
-                    Move m(endIdx - forwardStep, endIdx, false, piecePawn, p);
-                    this->MakeMove(m, tracking);
-                    this->UnMakeMove(m, bs, tracking);
-                    Add(moves, m);
-                }
-            }
-        } else {
-            // Black: promotions first
-            while (currMoves & promoRank) {
-                int endIdx = pop_lsb(currMoves);
-                for (Move::Promotion p : promotions) {
-                    Move m(endIdx - forwardStep, endIdx, false, piecePawn, p);
-                    this->MakeMove(m, tracking);
-                    this->UnMakeMove(m, bs, tracking);
-                    Add(moves, m);
-                }
-            }
-            // Non‑promotions
-            while (currMoves) {
-                int endIdx = pop_lsb(currMoves);
-                Move m(endIdx - forwardStep, endIdx, false, piecePawn,
-                       Move::Promotion::NA);
-                this->MakeMove(m, tracking);
-                this->UnMakeMove(m, bs, tracking);
-                Add(moves, m);
-            }
-        }
-
-        // Left captures
-        currMoves = captureLeft(myPawns) & (opponentBB | enPassantMask);
-        if constexpr (C == Color::WHITE) {
-            while (currMoves & ~promoRank) {
-                int endIdx = pop_lsb(currMoves);
-                int startIdx = endIdx - (forwardStep - 1); // -7
-                Move m(startIdx, endIdx, endIdx == this->enPassantIdx,
-                       piecePawn, Move::Promotion::NA);
-                this->MakeMove(m, tracking);
-                this->UnMakeMove(m, bs, tracking);
-                Add(moves, m);
-            }
-            while (currMoves) {
-                int endIdx = pop_lsb(currMoves);
-                for (Move::Promotion p : promotions) {
-                    Move m(endIdx - (forwardStep - 1), endIdx, false, piecePawn, p);
-                    this->MakeMove(m, tracking);
-                    this->UnMakeMove(m, bs, tracking);
-                    Add(moves, m);
-                }
-            }
-        } else {
-            // Black: promotions first
-            while (currMoves & promoRank) {
-                int endIdx = pop_lsb(currMoves);
-                for (Move::Promotion p : promotions) {
-                    Move m(endIdx - (forwardStep - 1), endIdx, false, piecePawn, p);
-                    this->MakeMove(m, tracking);
-                    this->UnMakeMove(m, bs, tracking);
-                    Add(moves, m);
-                }
-            }
-            while (currMoves) {
-                int endIdx = pop_lsb(currMoves);
-                int startIdx = endIdx - (forwardStep - 1);
-                Move m(startIdx, endIdx, endIdx == this->enPassantIdx,
-                       piecePawn, Move::Promotion::NA);
-                this->MakeMove(m, tracking);
-                this->UnMakeMove(m, bs, tracking);
-                Add(moves, m);
-            }
-        }
-
-        // Right captures
-        currMoves = captureRight(myPawns) & (opponentBB | enPassantMask);
-        if constexpr (C == Color::WHITE) {
-            while (currMoves & ~promoRank) {
-                int endIdx = pop_lsb(currMoves);
-                int startIdx = endIdx - (forwardStep + 1); // -9
-                Move m(startIdx, endIdx, endIdx == this->enPassantIdx,
-                       piecePawn, Move::Promotion::NA);
-                this->MakeMove(m, tracking);
-                this->UnMakeMove(m, bs, tracking);
-                Add(moves, m);
-            }
-            while (currMoves) {
-                int endIdx = pop_lsb(currMoves);
-                for (Move::Promotion p : promotions) {
-                    Move m(endIdx - (forwardStep + 1), endIdx, false, piecePawn, p);
-                    this->MakeMove(m, tracking);
-                    this->UnMakeMove(m, bs, tracking);
-                    Add(moves, m);
-                }
-            }
-        } else {
-            while (currMoves & promoRank) {
-                int endIdx = pop_lsb(currMoves);
-                for (Move::Promotion p : promotions) {
-                    Move m(endIdx - (forwardStep + 1), endIdx, false, piecePawn, p);
-                    this->MakeMove(m, tracking);
-                    this->UnMakeMove(m, bs, tracking);
-                    Add(moves, m);
-                }
-            }
-            while (currMoves) {
-                int endIdx = pop_lsb(currMoves);
-                int startIdx = endIdx - (forwardStep + 1);
-                Move m(startIdx, endIdx, endIdx == this->enPassantIdx,
-                       piecePawn, Move::Promotion::NA);
-                this->MakeMove(m, tracking);
-                this->UnMakeMove(m, bs, tracking);
-                Add(moves, m);
-            }
-        }
-
-        // ---------- Knights ----------
-        while (myKnights) {
-            int idx = pop_lsb(myKnights);
-            currMoves = KNIGHT_MOVES[idx] & ~ownPieces;
-            while (currMoves) {
-                int endIdx = pop_lsb(currMoves);
-                Move m(idx, endIdx, false, pieceKnight, Move::Promotion::NA);
-                this->MakeMove(m, tracking);
-                this->UnMakeMove(m, bs, tracking);
-                Add(moves, m);
-            }
-        }
-
-        // ---------- Bishops ----------
-        while (myBishops) {
-            int idx = pop_lsb(myBishops);
-            currMoves = BISHOP_MOVES[idx][BishopHash(idx, emptiesBB, opponentBB)];
-            while (currMoves) {
-                int endIdx = pop_lsb(currMoves);
-                Move m(idx, endIdx, false, pieceBishop, Move::Promotion::NA);
-                this->MakeMove(m, tracking);
-                this->UnMakeMove(m, bs, tracking);
-                Add(moves, m);
-            }
-        }
-
-        // ---------- Rooks ----------
-        while (myRooks) {
-            int idx = pop_lsb(myRooks);
-            currMoves = ROOK_MOVES[idx][RookHash(idx, emptiesBB, opponentBB)];
-            while (currMoves) {
-                int endIdx = pop_lsb(currMoves);
-                Move m(idx, endIdx, false, pieceRook, Move::Promotion::NA);
-                this->MakeMove(m, tracking);
-                this->UnMakeMove(m, bs, tracking);
-                Add(moves, m);
-            }
-        }
-
-        // ---------- Queens ----------
-        while (myQueens) {
-            int idx = pop_lsb(myQueens);
-            currMoves = BISHOP_MOVES[idx][BishopHash(idx, emptiesBB, opponentBB)] |
-                        ROOK_MOVES[idx][RookHash(idx, emptiesBB, opponentBB)];
-            while (currMoves) {
-                int endIdx = pop_lsb(currMoves);
-                Move m(idx, endIdx, false, pieceQueen, Move::Promotion::NA);
-                this->MakeMove(m, tracking);
-                this->UnMakeMove(m, bs, tracking);
-                Add(moves, m);
-            }
-        }
-    }
-
-    // ---------- King moves (always generated) ----------
-    int kingIdx = pop_lsb(myKing);
-    currMoves = KING_MOVES[kingIdx] & ~ownPieces;
-    while (currMoves) {
-        int endIdx = pop_lsb(currMoves);
-        Move m(kingIdx, endIdx, false, pieceKing, Move::Promotion::NA);
-        this->MakeMove(m, tracking);
-        this->UnMakeMove(m, bs, tracking);
-        Add(moves, m);
-    }
-
-    // ---------- Castling ----------
-    if constexpr (C == Color::WHITE) {
-        if (this->wCastle && checkStatus == Move::Check::NO_CHECK &&
-            ((emptiesBB & 0x0000000000000060) == 0x0000000000000060) &&
-            (this->InChecks(Color::WHITE, 0x0000000000000020) == Move::Check::NO_CHECK)) {
-            Move m(4, 6, false, pieceKing, Move::Promotion::NA);
-            this->MakeMove(m, tracking);
-            this->UnMakeMove(m, bs, tracking);
-            Add(moves, m);
-        }
-        if (this->wQueenCastle && checkStatus == Move::Check::NO_CHECK &&
-            ((emptiesBB & 0x000000000000000E) == 0x000000000000000E) &&
-            (this->InChecks(Color::WHITE, 0x0000000000000008) == Move::Check::NO_CHECK)) {
-            Move m(4, 2, false, pieceKing, Move::Promotion::NA);
-            this->MakeMove(m, tracking);
-            this->UnMakeMove(m, bs, tracking);
-            Add(moves, m);
-        }
-    } else {
-        if (this->bCastle && checkStatus == Move::Check::NO_CHECK &&
-            ((emptiesBB & 0x6000000000000000) == 0x6000000000000000) &&
-            (this->InChecks(Color::BLACK, 0x2000000000000000) == Move::Check::NO_CHECK)) {
-            Move m(60, 62, false, pieceKing, Move::Promotion::NA);
-            this->MakeMove(m, tracking);
-            this->UnMakeMove(m, bs, tracking);
-            Add(moves, m);
-        }
-        if (this->bQueenCastle && checkStatus == Move::Check::NO_CHECK &&
-            ((emptiesBB & 0x0E00000000000000) == 0x0E00000000000000) &&
-            (this->InChecks(Color::BLACK, 0x0800000000000000) == Move::Check::NO_CHECK)) {
-            Move m(60, 58, false, pieceKing, Move::Promotion::NA);
-            this->MakeMove(m, tracking);
-            this->UnMakeMove(m, bs, tracking);
-            Add(moves, m);
-        }
-    }
-    return moves;
-  }
+  template<Color C>
+  void generatePseudoLegalMoves(const Move::Check checkStatus,
+                                MoveCategories &moves) const;
 };
 
 #endif

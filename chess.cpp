@@ -17,7 +17,7 @@ uint64_t Chess::KING_MOVES[64] = {};
 uint64_t Chess::BISHOP_MOVES[64][4096] = {};
 // Hashed Rook moves
 uint64_t Chess::ROOK_MOVES[64][4096] = {};
-// Hash Queen moves
+// Promotion options
 Move::Promotion Chess::promotions[4] = {
     Move::Promotion::QUEEN, Move::Promotion::ROOK, Move::Promotion::KNIGHT,
     Move::Promotion::BISHOP};
@@ -434,18 +434,22 @@ const std::string Chess::ConvertToFEN() {
 }
 
 const Move::Check Chess::InChecks(const Color kingColor,
-                                  const uint64_t kingBoard) {
+                                  const uint64_t kingBoard) const {
   uint64_t currEmpties = this->empties();
   if (kingColor == Color::WHITE && kingBoard != this->wKing) {
     currEmpties = (currEmpties | this->wKing) & ~kingBoard;
   } else if (kingColor == Color::BLACK && kingBoard != this->bKing) {
     currEmpties = (currEmpties | this->bKing) & ~kingBoard;
   }
-  uint64_t opponent = (kingColor == Color::WHITE) ? this->blacks() : this->whites();
+  uint64_t opponent =
+      (kingColor == Color::WHITE) ? this->blacks() : this->whites();
   uint64_t oppRooks = (kingColor == Color::WHITE) ? this->bRooks : this->wRooks;
-  uint64_t oppBishops = (kingColor == Color::WHITE) ? this->bBishops : this->wBishops;
-  uint64_t oppKnights = (kingColor == Color::WHITE) ? this->bKnights : this->wKnights;
-  uint64_t oppQueens = (kingColor == Color::WHITE) ? this->bQueens : this->wQueens;
+  uint64_t oppBishops =
+      (kingColor == Color::WHITE) ? this->bBishops : this->wBishops;
+  uint64_t oppKnights =
+      (kingColor == Color::WHITE) ? this->bKnights : this->wKnights;
+  uint64_t oppQueens =
+      (kingColor == Color::WHITE) ? this->bQueens : this->wQueens;
   uint64_t oppPawns = (kingColor == Color::WHITE) ? this->bPawns : this->wPawns;
   uint64_t oppKing = (kingColor == Color::WHITE) ? this->bKing : this->wKing;
 
@@ -922,72 +926,605 @@ void Chess::UnMakeMove(const Move &m, const BoardState &bs,
   }
 }
 
-MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus,
-                                       const bool tracking) {
-  const BoardState bs(
-      this->wCastle, this->wQueenCastle, this->bCastle, this->bQueenCastle,
-      this->enPassantIdx, this->lastPawnOrTake, this->fullTurns,
-      this->firstOccurrence, this->secondOccurrence, this->thirdOccurrence);
+// ------------------------------------------------------------------
+// New helper: checkAfterMove (cheap check classification)
+// ------------------------------------------------------------------
+Move::Check Chess::checkAfterMove(const Move &m) const {
+  // Make a shallow copy of the board (bitboards only are enough)
+  Chess sim(*this);
 
-  if (this->turn == Color::WHITE)
-    return generatePseudoLegalMoves<Color::WHITE>(checkStatus, tracking, bs);
-  else
-    return generatePseudoLegalMoves<Color::BLACK>(checkStatus, tracking, bs);
+  // Remove the moving piece from its start square
+  switch (m.pieceType) {
+  case Move::Piece::W_PAWN:
+    clear_bit(sim.wPawns, m.start);
+    break;
+  case Move::Piece::B_PAWN:
+    clear_bit(sim.bPawns, m.start);
+    break;
+  case Move::Piece::W_KNIGHT:
+    clear_bit(sim.wKnights, m.start);
+    break;
+  case Move::Piece::B_KNIGHT:
+    clear_bit(sim.bKnights, m.start);
+    break;
+  case Move::Piece::W_BISHOP:
+    clear_bit(sim.wBishops, m.start);
+    break;
+  case Move::Piece::B_BISHOP:
+    clear_bit(sim.bBishops, m.start);
+    break;
+  case Move::Piece::W_ROOK:
+    clear_bit(sim.wRooks, m.start);
+    break;
+  case Move::Piece::B_ROOK:
+    clear_bit(sim.bRooks, m.start);
+    break;
+  case Move::Piece::W_QUEEN:
+    clear_bit(sim.wQueens, m.start);
+    break;
+  case Move::Piece::B_QUEEN:
+    clear_bit(sim.bQueens, m.start);
+    break;
+  case Move::Piece::W_KING:
+    clear_bit(sim.wKing, m.start);
+    break;
+  case Move::Piece::B_KING:
+    clear_bit(sim.bKing, m.start);
+    break;
+  default:
+    break;
+  }
+
+  // Place the piece (possibly promoted) on the destination square
+  Move::Piece finalPiece = m.pieceType;
+  if (m.promotionType != Move::Promotion::NA) {
+    if (turn == Color::WHITE) {
+      switch (m.promotionType) {
+      case Move::Promotion::QUEEN:
+        finalPiece = Move::Piece::W_QUEEN;
+        break;
+      case Move::Promotion::ROOK:
+        finalPiece = Move::Piece::W_ROOK;
+        break;
+      case Move::Promotion::KNIGHT:
+        finalPiece = Move::Piece::W_KNIGHT;
+        break;
+      case Move::Promotion::BISHOP:
+        finalPiece = Move::Piece::W_BISHOP;
+        break;
+      default:
+        break;
+      }
+    } else {
+      switch (m.promotionType) {
+      case Move::Promotion::QUEEN:
+        finalPiece = Move::Piece::B_QUEEN;
+        break;
+      case Move::Promotion::ROOK:
+        finalPiece = Move::Piece::B_ROOK;
+        break;
+      case Move::Promotion::KNIGHT:
+        finalPiece = Move::Piece::B_KNIGHT;
+        break;
+      case Move::Promotion::BISHOP:
+        finalPiece = Move::Piece::B_BISHOP;
+        break;
+      default:
+        break;
+      }
+    }
+  }
+  switch (finalPiece) {
+  case Move::Piece::W_PAWN:
+    set_bit(sim.wPawns, m.end);
+    break;
+  case Move::Piece::B_PAWN:
+    set_bit(sim.bPawns, m.end);
+    break;
+  case Move::Piece::W_KNIGHT:
+    set_bit(sim.wKnights, m.end);
+    break;
+  case Move::Piece::B_KNIGHT:
+    set_bit(sim.bKnights, m.end);
+    break;
+  case Move::Piece::W_BISHOP:
+    set_bit(sim.wBishops, m.end);
+    break;
+  case Move::Piece::B_BISHOP:
+    set_bit(sim.bBishops, m.end);
+    break;
+  case Move::Piece::W_ROOK:
+    set_bit(sim.wRooks, m.end);
+    break;
+  case Move::Piece::B_ROOK:
+    set_bit(sim.bRooks, m.end);
+    break;
+  case Move::Piece::W_QUEEN:
+    set_bit(sim.wQueens, m.end);
+    break;
+  case Move::Piece::B_QUEEN:
+    set_bit(sim.bQueens, m.end);
+    break;
+  case Move::Piece::W_KING:
+    set_bit(sim.wKing, m.end);
+    break;
+  case Move::Piece::B_KING:
+    set_bit(sim.bKing, m.end);
+    break;
+  default:
+    break;
+  }
+
+  // Handle captures (including en passant)
+  if (m.enPassant) {
+    if (turn == Color::WHITE)
+      clear_bit(sim.bPawns, m.end - 8); // white pawn captures black en passant
+    else
+      clear_bit(sim.wPawns, m.end + 8);
+  } else if (m.captureType != Move::Piece::NONE) {
+    switch (m.captureType) {
+    case Move::Piece::W_PAWN:
+      clear_bit(sim.wPawns, m.end);
+      break;
+    case Move::Piece::B_PAWN:
+      clear_bit(sim.bPawns, m.end);
+      break;
+    case Move::Piece::W_KNIGHT:
+      clear_bit(sim.wKnights, m.end);
+      break;
+    case Move::Piece::B_KNIGHT:
+      clear_bit(sim.bKnights, m.end);
+      break;
+    case Move::Piece::W_BISHOP:
+      clear_bit(sim.wBishops, m.end);
+      break;
+    case Move::Piece::B_BISHOP:
+      clear_bit(sim.bBishops, m.end);
+      break;
+    case Move::Piece::W_ROOK:
+      clear_bit(sim.wRooks, m.end);
+      break;
+    case Move::Piece::B_ROOK:
+      clear_bit(sim.bRooks, m.end);
+      break;
+    case Move::Piece::W_QUEEN:
+      clear_bit(sim.wQueens, m.end);
+      break;
+    case Move::Piece::B_QUEEN:
+      clear_bit(sim.bQueens, m.end);
+      break;
+    case Move::Piece::W_KING:
+      clear_bit(sim.wKing, m.end);
+      break;
+    case Move::Piece::B_KING:
+      clear_bit(sim.bKing, m.end);
+      break;
+    default:
+      break;
+    }
+  }
+
+  // Handle castling – move the rook as well
+  if (m.pieceType == Move::Piece::W_KING) {
+    if (m.start == 4 && m.end == 6) { // king‑side
+      clear_bit(sim.wRooks, 7);
+      set_bit(sim.wRooks, 5);
+    } else if (m.start == 4 && m.end == 2) { // queen‑side
+      clear_bit(sim.wRooks, 0);
+      set_bit(sim.wRooks, 3);
+    }
+  } else if (m.pieceType == Move::Piece::B_KING) {
+    if (m.start == 60 && m.end == 62) {
+      clear_bit(sim.bRooks, 63);
+      set_bit(sim.bRooks, 61);
+    } else if (m.start == 60 && m.end == 58) {
+      clear_bit(sim.bRooks, 56);
+      set_bit(sim.bRooks, 59);
+    }
+  }
+
+  // Now determine check type using the standard InChecks on the modified copy.
+  // The side to move has just changed: after White moves, it's Black's turn.
+  Color nextToMove = (turn == Color::WHITE) ? Color::BLACK : Color::WHITE;
+  return sim.InChecks(nextToMove,
+                      (nextToMove == Color::WHITE) ? sim.wKing : sim.bKing);
+}
+// ------------------------------------------------------------------
+// Updated move generator – fills MoveCategories without MakeMove/UnMakeMove
+// ------------------------------------------------------------------
+template <Color C>
+void Chess::generatePseudoLegalMoves(const Move::Check checkStatus,
+                                     MoveCategories &moves) const {
+  Chess gameCopy(*this);
+  uint64_t currMoves = 0ULL;
+  const uint64_t enPassantMask =
+      (enPassantIdx == -1) ? 0ULL : (1ULL << enPassantIdx);
+
+  constexpr Color opponentColor =
+      (C == Color::WHITE) ? Color::BLACK : Color::WHITE;
+  constexpr int forwardStep = (C == Color::WHITE) ? 8 : -8;
+  constexpr uint64_t startRank = (C == Color::WHITE) ? RANK_2 : RANK_7;
+  constexpr uint64_t promoRank = (C == Color::WHITE) ? RANK_8 : RANK_1;
+
+  constexpr Move::Piece piecePawn =
+      (C == Color::WHITE) ? Move::Piece::W_PAWN : Move::Piece::B_PAWN;
+  constexpr Move::Piece pieceKnight =
+      (C == Color::WHITE) ? Move::Piece::W_KNIGHT : Move::Piece::B_KNIGHT;
+  constexpr Move::Piece pieceBishop =
+      (C == Color::WHITE) ? Move::Piece::W_BISHOP : Move::Piece::B_BISHOP;
+  constexpr Move::Piece pieceRook =
+      (C == Color::WHITE) ? Move::Piece::W_ROOK : Move::Piece::B_ROOK;
+  constexpr Move::Piece pieceQueen =
+      (C == Color::WHITE) ? Move::Piece::W_QUEEN : Move::Piece::B_QUEEN;
+  constexpr Move::Piece pieceKing =
+      (C == Color::WHITE) ? Move::Piece::W_KING : Move::Piece::B_KING;
+
+  uint64_t &myPawns = (C == Color::WHITE) ? gameCopy.wPawns : gameCopy.bPawns;
+  uint64_t &myKnights =
+      (C == Color::WHITE) ? gameCopy.wKnights : gameCopy.bKnights;
+  uint64_t &myBishops =
+      (C == Color::WHITE) ? gameCopy.wBishops : gameCopy.bBishops;
+  uint64_t &myRooks = (C == Color::WHITE) ? gameCopy.wRooks : gameCopy.bRooks;
+  uint64_t &myQueens =
+      (C == Color::WHITE) ? gameCopy.wQueens : gameCopy.bQueens;
+  uint64_t &myKing = (C == Color::WHITE) ? gameCopy.wKing : gameCopy.bKing;
+
+  uint64_t opponentBB = (C == Color::WHITE) ? blacks() : whites();
+  uint64_t ownPieces = (C == Color::WHITE) ? whites() : blacks();
+  uint64_t emptiesBB = empties();
+
+  auto getCapture = [&](int endSquare, bool enPassant) -> Move::Piece {
+    if (enPassant)
+      return (C == Color::WHITE) ? Move::Piece::B_PAWN : Move::Piece::W_PAWN;
+    uint64_t mask = 1ULL << endSquare;
+    if constexpr (C == Color::WHITE) {
+      if (mask & bPawns)
+        return Move::Piece::B_PAWN;
+      if (mask & bKnights)
+        return Move::Piece::B_KNIGHT;
+      if (mask & bBishops)
+        return Move::Piece::B_BISHOP;
+      if (mask & bRooks)
+        return Move::Piece::B_ROOK;
+      if (mask & bQueens)
+        return Move::Piece::B_QUEEN;
+      if (mask & bKing)
+        return Move::Piece::B_KING;
+    } else {
+      if (mask & wPawns)
+        return Move::Piece::W_PAWN;
+      if (mask & wKnights)
+        return Move::Piece::W_KNIGHT;
+      if (mask & wBishops)
+        return Move::Piece::W_BISHOP;
+      if (mask & wRooks)
+        return Move::Piece::W_ROOK;
+      if (mask & wQueens)
+        return Move::Piece::W_QUEEN;
+      if (mask & wKing)
+        return Move::Piece::W_KING;
+    }
+    return Move::Piece::NONE;
+  };
+
+  auto forward = [](uint64_t b) constexpr {
+    if constexpr (C == Color::WHITE)
+      return up(b);
+    else
+      return down(b);
+  };
+  auto captureLeft = [](uint64_t b) constexpr {
+    if constexpr (C == Color::WHITE)
+      return up_left(b);
+    else
+      return down_left(b);
+  };
+  auto captureRight = [](uint64_t b) constexpr {
+    if constexpr (C == Color::WHITE)
+      return up_right(b);
+    else
+      return down_right(b);
+  };
+
+  if (checkStatus != Move::Check::DOUBLE_CHECK) {
+    // ---------- Pawn moves ----------
+    // Double push
+    currMoves = forward(forward(myPawns & startRank) & emptiesBB) & emptiesBB;
+    while (currMoves) {
+      int endIdx = pop_lsb(currMoves);
+      int startIdx = endIdx - 2 * forwardStep;
+      Move m(startIdx, endIdx, false, piecePawn, Move::Promotion::NA);
+      m.captureType = getCapture(endIdx, false);
+      m.checkType = this->checkAfterMove(m);
+      Add(moves, m);
+    }
+
+    // Single push
+    currMoves = forward(myPawns) & emptiesBB;
+    if constexpr (C == Color::WHITE) {
+      while (currMoves & ~promoRank) {
+        int endIdx = pop_lsb(currMoves);
+        Move m(endIdx - forwardStep, endIdx, false, piecePawn,
+               Move::Promotion::NA);
+        m.captureType = getCapture(endIdx, false);
+        m.checkType = this->checkAfterMove(m);
+        Add(moves, m);
+      }
+      while (currMoves) {
+        int endIdx = pop_lsb(currMoves);
+        for (Move::Promotion p : promotions) {
+          Move m(endIdx - forwardStep, endIdx, false, piecePawn, p);
+          m.captureType = getCapture(endIdx, false);
+          m.checkType = this->checkAfterMove(m);
+          Add(moves, m);
+        }
+      }
+    } else {
+      while (currMoves & promoRank) {
+        int endIdx = pop_lsb(currMoves);
+        for (Move::Promotion p : promotions) {
+          Move m(endIdx - forwardStep, endIdx, false, piecePawn, p);
+          m.captureType = getCapture(endIdx, false);
+          m.checkType = this->checkAfterMove(m);
+          Add(moves, m);
+        }
+      }
+      while (currMoves) {
+        int endIdx = pop_lsb(currMoves);
+        Move m(endIdx - forwardStep, endIdx, false, piecePawn,
+               Move::Promotion::NA);
+        m.captureType = getCapture(endIdx, false);
+        m.checkType = this->checkAfterMove(m);
+        Add(moves, m);
+      }
+    }
+
+    // Left captures
+    currMoves = captureLeft(myPawns) & (opponentBB | enPassantMask);
+    if constexpr (C == Color::WHITE) {
+      while (currMoves & ~promoRank) {
+        int endIdx = pop_lsb(currMoves);
+        int startIdx = endIdx - (forwardStep - 1);
+        bool ep = (endIdx == enPassantIdx);
+        Move m(startIdx, endIdx, ep, piecePawn, Move::Promotion::NA);
+        m.captureType = getCapture(endIdx, ep);
+        m.checkType = this->checkAfterMove(m);
+        Add(moves, m);
+      }
+      while (currMoves) {
+        int endIdx = pop_lsb(currMoves);
+        for (Move::Promotion p : promotions) {
+          Move m(endIdx - (forwardStep - 1), endIdx, false, piecePawn, p);
+          m.captureType = getCapture(endIdx, false);
+          m.checkType = this->checkAfterMove(m);
+          Add(moves, m);
+        }
+      }
+    } else {
+      while (currMoves & promoRank) {
+        int endIdx = pop_lsb(currMoves);
+        for (Move::Promotion p : promotions) {
+          Move m(endIdx - (forwardStep - 1), endIdx, false, piecePawn, p);
+          m.captureType = getCapture(endIdx, false);
+          m.checkType = this->checkAfterMove(m);
+          Add(moves, m);
+        }
+      }
+      while (currMoves) {
+        int endIdx = pop_lsb(currMoves);
+        int startIdx = endIdx - (forwardStep - 1);
+        bool ep = (endIdx == enPassantIdx);
+        Move m(startIdx, endIdx, ep, piecePawn, Move::Promotion::NA);
+        m.captureType = getCapture(endIdx, ep);
+        m.checkType = this->checkAfterMove(m);
+        Add(moves, m);
+      }
+    }
+
+    // Right captures
+    currMoves = captureRight(myPawns) & (opponentBB | enPassantMask);
+    if constexpr (C == Color::WHITE) {
+      while (currMoves & ~promoRank) {
+        int endIdx = pop_lsb(currMoves);
+        int startIdx = endIdx - (forwardStep + 1);
+        bool ep = (endIdx == enPassantIdx);
+        Move m(startIdx, endIdx, ep, piecePawn, Move::Promotion::NA);
+        m.captureType = getCapture(endIdx, ep);
+        m.checkType = this->checkAfterMove(m);
+        Add(moves, m);
+      }
+      while (currMoves) {
+        int endIdx = pop_lsb(currMoves);
+        for (Move::Promotion p : promotions) {
+          Move m(endIdx - (forwardStep + 1), endIdx, false, piecePawn, p);
+          m.captureType = getCapture(endIdx, false);
+          m.checkType = this->checkAfterMove(m);
+          Add(moves, m);
+        }
+      }
+    } else {
+      while (currMoves & promoRank) {
+        int endIdx = pop_lsb(currMoves);
+        for (Move::Promotion p : promotions) {
+          Move m(endIdx - (forwardStep + 1), endIdx, false, piecePawn, p);
+          m.captureType = getCapture(endIdx, false);
+          m.checkType = this->checkAfterMove(m);
+          Add(moves, m);
+        }
+      }
+      while (currMoves) {
+        int endIdx = pop_lsb(currMoves);
+        int startIdx = endIdx - (forwardStep + 1);
+        bool ep = (endIdx == enPassantIdx);
+        Move m(startIdx, endIdx, ep, piecePawn, Move::Promotion::NA);
+        m.captureType = getCapture(endIdx, ep);
+        m.checkType = this->checkAfterMove(m);
+        Add(moves, m);
+      }
+    }
+
+    // ---------- Knights ----------
+    while (myKnights) {
+      int idx = pop_lsb(myKnights);
+      currMoves = KNIGHT_MOVES[idx] & ~ownPieces;
+      while (currMoves) {
+        int endIdx = pop_lsb(currMoves);
+        Move m(idx, endIdx, false, pieceKnight, Move::Promotion::NA);
+        m.captureType = getCapture(endIdx, false);
+        m.checkType = this->checkAfterMove(m);
+        Add(moves, m);
+      }
+    }
+
+    // ---------- Bishops ----------
+    while (myBishops) {
+      int idx = pop_lsb(myBishops);
+      currMoves = BISHOP_MOVES[idx][BishopHash(idx, emptiesBB, opponentBB)];
+      while (currMoves) {
+        int endIdx = pop_lsb(currMoves);
+        Move m(idx, endIdx, false, pieceBishop, Move::Promotion::NA);
+        m.captureType = getCapture(endIdx, false);
+        m.checkType = this->checkAfterMove(m);
+        Add(moves, m);
+      }
+    }
+
+    // ---------- Rooks ----------
+    while (myRooks) {
+      int idx = pop_lsb(myRooks);
+      currMoves = ROOK_MOVES[idx][RookHash(idx, emptiesBB, opponentBB)];
+      while (currMoves) {
+        int endIdx = pop_lsb(currMoves);
+        Move m(idx, endIdx, false, pieceRook, Move::Promotion::NA);
+        m.captureType = getCapture(endIdx, false);
+        m.checkType = this->checkAfterMove(m);
+        Add(moves, m);
+      }
+    }
+
+    // ---------- Queens ----------
+    while (myQueens) {
+      int idx = pop_lsb(myQueens);
+      currMoves = BISHOP_MOVES[idx][BishopHash(idx, emptiesBB, opponentBB)] |
+                  ROOK_MOVES[idx][RookHash(idx, emptiesBB, opponentBB)];
+      while (currMoves) {
+        int endIdx = pop_lsb(currMoves);
+        Move m(idx, endIdx, false, pieceQueen, Move::Promotion::NA);
+        m.captureType = getCapture(endIdx, false);
+        m.checkType = this->checkAfterMove(m);
+        Add(moves, m);
+      }
+    }
+  }
+
+  // ---------- King moves ----------
+  int kingIdx = pop_lsb(myKing);
+  currMoves = KING_MOVES[kingIdx] & ~ownPieces;
+  while (currMoves) {
+    int endIdx = pop_lsb(currMoves);
+    Move m(kingIdx, endIdx, false, pieceKing, Move::Promotion::NA);
+    m.captureType = getCapture(endIdx, false);
+    m.checkType = this->checkAfterMove(m);
+    Add(moves, m);
+  }
+
+  // ---------- Castling ----------
+  if constexpr (C == Color::WHITE) {
+    if (wCastle && checkStatus == Move::Check::NO_CHECK &&
+        ((emptiesBB & 0x0000000000000060) == 0x0000000000000060) &&
+        (InChecks(Color::WHITE, 0x0000000000000020) == Move::Check::NO_CHECK)) {
+      Move m(4, 6, false, pieceKing, Move::Promotion::NA);
+      m.captureType = Move::Piece::NONE;
+      m.checkType = this->checkAfterMove(m);
+      Add(moves, m);
+    }
+    if (wQueenCastle && checkStatus == Move::Check::NO_CHECK &&
+        ((emptiesBB & 0x000000000000000E) == 0x000000000000000E) &&
+        (InChecks(Color::WHITE, 0x0000000000000008) == Move::Check::NO_CHECK)) {
+      Move m(4, 2, false, pieceKing, Move::Promotion::NA);
+      m.captureType = Move::Piece::NONE;
+      m.checkType = this->checkAfterMove(m);
+      Add(moves, m);
+    }
+  } else {
+    if (bCastle && checkStatus == Move::Check::NO_CHECK &&
+        ((emptiesBB & 0x6000000000000000) == 0x6000000000000000) &&
+        (InChecks(Color::BLACK, 0x2000000000000000) == Move::Check::NO_CHECK)) {
+      Move m(60, 62, false, pieceKing, Move::Promotion::NA);
+      m.captureType = Move::Piece::NONE;
+      m.checkType = this->checkAfterMove(m);
+      Add(moves, m);
+    }
+    if (bQueenCastle && checkStatus == Move::Check::NO_CHECK &&
+        ((emptiesBB & 0x0E00000000000000) == 0x0E00000000000000) &&
+        (InChecks(Color::BLACK, 0x0800000000000000) == Move::Check::NO_CHECK)) {
+      Move m(60, 58, false, pieceKing, Move::Promotion::NA);
+      m.captureType = Move::Piece::NONE;
+      m.checkType = this->checkAfterMove(m);
+      Add(moves, m);
+    }
+  }
 }
 
+// ------------------------------------------------------------------
+// Public PseudoLegalMoves (returns MoveCategories)
+// ------------------------------------------------------------------
+MoveCategories Chess::PseudoLegalMoves(const Move::Check checkStatus) {
+  MoveCategories moves;
+  if (turn == Color::WHITE)
+    generatePseudoLegalMoves<Color::WHITE>(checkStatus, moves);
+  else
+    generatePseudoLegalMoves<Color::BLACK>(checkStatus, moves);
+  return moves;
+}
+
+// ------------------------------------------------------------------
+// Perft & multithreading – unchanged except for MoveCategories use
+// ------------------------------------------------------------------
 PerftResultsThreaded perftResults;
 
 uint64_t Chess::perft(int depth, Move::Check checkType) {
-  // Was the last move legal?
-  if ((this->turn == Color::WHITE &&
-       (this->InChecks(Color::BLACK, this->bKing) != Move::Check::NO_CHECK)) ||
-      (this->turn != Color::WHITE &&
-       (this->InChecks(Color::WHITE, this->wKing) != Move::Check::NO_CHECK))) {
+  if ((turn == Color::WHITE &&
+       InChecks(Color::BLACK, bKing) != Move::Check::NO_CHECK) ||
+      (turn != Color::WHITE &&
+       InChecks(Color::WHITE, wKing) != Move::Check::NO_CHECK))
     return 0;
-  }
-
-  // Base Case
-  if (depth == 0) {
-    // std::cout << this->ConvertToFEN() << std::endl;
+  if (depth == 0)
     return 1;
-  }
-
-  if (this->thirdOccurrence) {
+  if (thirdOccurrence)
     return 0;
-  }
-  std::string currIdx = this->BoardIdx();
-  uint64_t nodes = 0ULL;
-  if (perftResults.get(currIdx, depth, nodes)) {
-    return nodes;
-  }
 
-  MoveCategories pMoves = this->PseudoLegalMoves(checkType, false);
-  const BoardState bs(
-      this->wCastle, this->wQueenCastle, this->bCastle, this->bQueenCastle,
-      this->enPassantIdx, this->lastPawnOrTake, this->fullTurns,
-      this->firstOccurrence, this->secondOccurrence, this->thirdOccurrence);
+  std::string currIdx = BoardIdx();
+  uint64_t nodes = 0ULL;
+  if (perftResults.get(currIdx, depth, nodes))
+    return nodes;
+
+  MoveCategories pMoves = PseudoLegalMoves(checkType);
+  BoardState bs(wCastle, wQueenCastle, bCastle, bQueenCastle, enPassantIdx,
+                lastPawnOrTake, fullTurns, firstOccurrence, secondOccurrence,
+                thirdOccurrence);
+
   for (Move &m : pMoves.doubleChecks) {
-    this->MakeMove(m, false);
-    nodes += this->perft(depth - 1, Move::DOUBLE_CHECK);
-    this->UnMakeMove(m, bs, false);
+    MakeMove(m, false);
+    nodes += perft(depth - 1, Move::DOUBLE_CHECK);
+    UnMakeMove(m, bs, false);
   }
   for (Move &m : pMoves.checks) {
-    this->MakeMove(m, false);
-    nodes += this->perft(depth - 1, Move::CHECK);
-    this->UnMakeMove(m, bs, false);
+    MakeMove(m, false);
+    nodes += perft(depth - 1, Move::CHECK);
+    UnMakeMove(m, bs, false);
   }
   for (Move &m : pMoves.captures) {
-    this->MakeMove(m, false);
-    nodes += this->perft(depth - 1, Move::NO_CHECK);
-    this->UnMakeMove(m, bs, false);
+    MakeMove(m, false);
+    nodes += perft(depth - 1, Move::NO_CHECK);
+    UnMakeMove(m, bs, false);
   }
   for (Move &m : pMoves.etc) {
-    this->MakeMove(m, false);
-    nodes += this->perft(depth - 1, Move::NO_CHECK);
-    this->UnMakeMove(m, bs, false);
+    MakeMove(m, false);
+    nodes += perft(depth - 1, Move::NO_CHECK);
+    UnMakeMove(m, bs, false);
   }
   perftResults.insert(currIdx, depth, nodes);
-
   return nodes;
 }
 
@@ -1009,38 +1546,29 @@ void Chess::perftWorker(Chess currGame, std::vector<Move> moves, int depth,
 }
 
 uint64_t Chess::perftRecurse(int depth, Move::Check checkType) {
-  if (NUM_THREADS == 1) {
-    return this->perft(depth, checkType);
-  }
-  MoveCategories m = this->PseudoLegalMoves(checkType, false);
+  if (NUM_THREADS == 1)
+    return perft(depth, checkType);
+
+  MoveCategories m = PseudoLegalMoves(checkType);
   size_t numMoves = m.numMoves();
   std::vector<Move> allMoves;
   allMoves.reserve(numMoves);
-  allMoves.insert(allMoves.begin(), m.doubleChecks.begin(),
-                  m.doubleChecks.end());
-  allMoves.insert(allMoves.begin() + m.doubleChecks.size(), m.checks.begin(),
-                  m.checks.end());
-  allMoves.insert(allMoves.begin() + m.doubleChecks.size() + m.checks.size(),
-                  m.captures.begin(), m.captures.end());
-  allMoves.insert(allMoves.begin() + m.doubleChecks.size() + m.checks.size() +
-                      m.captures.size(),
-                  m.etc.begin(), m.etc.end());
+  allMoves.insert(allMoves.end(), m.doubleChecks.begin(), m.doubleChecks.end());
+  allMoves.insert(allMoves.end(), m.checks.begin(), m.checks.end());
+  allMoves.insert(allMoves.end(), m.captures.begin(), m.captures.end());
+  allMoves.insert(allMoves.end(), m.etc.begin(), m.etc.end());
+
   std::vector<std::thread> threads;
   std::atomic<uint64_t> totalNodes(0);
   for (int i = 0; i < NUM_THREADS; ++i) {
     std::vector<Move> currMoves;
-    for (int k = i; k < numMoves; k += NUM_THREADS) {
+    for (int k = i; k < numMoves; k += NUM_THREADS)
       currMoves.emplace_back(allMoves[k]);
-    }
     threads.emplace_back(perftWorker, *this, currMoves, depth, checkType,
                          std::ref(totalNodes));
   }
-
-  for (auto &thread : threads) {
-    if (thread.joinable()) {
-      thread.join();
-    }
-  }
-
+  for (auto &t : threads)
+    if (t.joinable())
+      t.join();
   return totalNodes.load();
 }
