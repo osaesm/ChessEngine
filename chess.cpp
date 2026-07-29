@@ -23,6 +23,9 @@ uint64_t Chess::zobristEnPassant[8] = {};
 uint64_t Chess::zobristCastle[4] = {};
 uint64_t Chess::zobristBlackToMove = 0;
 
+// Thread‑local repetition tracker
+static thread_local RepetitionTracker repTracker;
+
 void Add(MoveCategories &mC, Move &m) {
   if (m.checkType == Move::Check::DOUBLE_CHECK) {
     mC.doubleChecks.emplace_back(m);
@@ -138,9 +141,6 @@ void Chess::Initialize() {
 }
 
 Chess::Chess(const std::string &fenString) {
-  this->firstOccurrence.clear();
-  this->secondOccurrence.clear();
-  this->thirdOccurrence = false;
   // First part
   auto currSquare = 56;
   auto idx = 0;
@@ -341,15 +341,6 @@ Chess::Chess(const Chess &x) {
   this->enPassantIdx = x.enPassantIdx;
   this->lastPawnOrTake = x.lastPawnOrTake;
   this->fullTurns = x.fullTurns;
-  this->firstOccurrence.clear();
-  for (const auto &k : x.firstOccurrence) {
-    this->firstOccurrence.emplace_back(k);
-  }
-  this->secondOccurrence.clear();
-  for (const auto &k : x.secondOccurrence) {
-    this->secondOccurrence.emplace_back(k);
-  }
-  this->thirdOccurrence = x.thirdOccurrence;
   this->hash = x.hash;
 }
 
@@ -520,6 +511,8 @@ const Move::Check Chess::InChecks(const Color kingColor,
   return checkType;
 }
 
+bool Chess::isRepetition() const { return repTracker.isRepetition(this->hash); }
+
 void Chess::MakeMove(Move &m, const bool tracking) {
   // Remove old en passant from hash
   if (this->enPassantIdx != -1)
@@ -532,7 +525,14 @@ void Chess::MakeMove(Move &m, const bool tracking) {
   if (tracking) {
     ++this->lastPawnOrTake;
   }
-  this->turn = (this->turn == Color::WHITE) ? Color::BLACK : Color::WHITE;
+
+  // Determine irreversibility before updating board
+  bool irreversible = false;
+  if (m.pieceType == Move::Piece::W_PAWN ||
+      m.pieceType == Move::Piece::B_PAWN ||
+      m.captureType != Move::Piece::NONE || m.enPassant) {
+    irreversible = true;
+  }
 
   // Update hash for the moving piece: remove from start, add to end
   switch (m.pieceType) {
@@ -567,8 +567,6 @@ void Chess::MakeMove(Move &m, const bool tracking) {
       break;
     }
     if (tracking) {
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
       this->lastPawnOrTake = 0;
     }
     break;
@@ -593,15 +591,18 @@ void Chess::MakeMove(Move &m, const bool tracking) {
       this->hash ^= zobristCastle[0];
       this->wCastle = false;
       if (tracking) {
-        this->firstOccurrence.clear();
-        this->secondOccurrence.clear();
+        this->lastPawnOrTake = 0;
+        // irreversible move: pawn move or capture, but here it's a rook move
+        // that loses castling rights. Rook moves are not pawn moves nor
+        // captures, but losing castling rights is not irreversible for
+        // repetition. We do NOT clear the repetition history on castling right
+        // changes. Only pawn moves and captures reset the history.
       }
     } else if (this->wQueenCastle && m.start == 0) {
       this->hash ^= zobristCastle[1];
       this->wQueenCastle = false;
       if (tracking) {
-        this->firstOccurrence.clear();
-        this->secondOccurrence.clear();
+        this->lastPawnOrTake = 0;
       }
     }
     break;
@@ -620,16 +621,14 @@ void Chess::MakeMove(Move &m, const bool tracking) {
       this->hash ^= zobristCastle[0];
       this->wCastle = false;
       if (tracking) {
-        this->firstOccurrence.clear();
-        this->secondOccurrence.clear();
+        this->lastPawnOrTake = 0;
       }
     }
     if (this->wQueenCastle) {
       this->hash ^= zobristCastle[1];
       this->wQueenCastle = false;
       if (tracking) {
-        this->firstOccurrence.clear();
-        this->secondOccurrence.clear();
+        this->lastPawnOrTake = 0;
       }
     }
     if (m.start == 4 && m.end == 6) {
@@ -675,8 +674,6 @@ void Chess::MakeMove(Move &m, const bool tracking) {
       break;
     }
     if (tracking) {
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
       this->lastPawnOrTake = 0;
     }
     break;
@@ -701,15 +698,13 @@ void Chess::MakeMove(Move &m, const bool tracking) {
       this->hash ^= zobristCastle[2];
       this->bCastle = false;
       if (tracking) {
-        this->firstOccurrence.clear();
-        this->secondOccurrence.clear();
+        this->lastPawnOrTake = 0;
       }
     } else if (this->bQueenCastle && m.start == 56) {
       this->hash ^= zobristCastle[3];
       this->bQueenCastle = false;
       if (tracking) {
-        this->firstOccurrence.clear();
-        this->secondOccurrence.clear();
+        this->lastPawnOrTake = 0;
       }
     }
     break;
@@ -728,16 +723,14 @@ void Chess::MakeMove(Move &m, const bool tracking) {
       this->hash ^= zobristCastle[2];
       this->bCastle = false;
       if (tracking) {
-        this->firstOccurrence.clear();
-        this->secondOccurrence.clear();
+        this->lastPawnOrTake = 0;
       }
     }
     if (this->bQueenCastle) {
       this->hash ^= zobristCastle[3];
       this->bQueenCastle = false;
       if (tracking) {
-        this->firstOccurrence.clear();
-        this->secondOccurrence.clear();
+        this->lastPawnOrTake = 0;
       }
     }
     if (m.start == 60 && m.end == 62) {
@@ -771,8 +764,6 @@ void Chess::MakeMove(Move &m, const bool tracking) {
              ((1ULL << m.end) & this->blacks())) {
     if (tracking) {
       this->lastPawnOrTake = 0;
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
     }
     if (get_bit(this->bPawns, m.end)) {
       m.captureType = Move::Piece::B_PAWN;
@@ -810,8 +801,6 @@ void Chess::MakeMove(Move &m, const bool tracking) {
              ((1ULL << m.end) & this->whites())) {
     if (tracking) {
       this->lastPawnOrTake = 0;
-      this->firstOccurrence.clear();
-      this->secondOccurrence.clear();
     }
     if (get_bit(this->wPawns, m.end)) {
       m.captureType = Move::Piece::W_PAWN;
@@ -849,6 +838,7 @@ void Chess::MakeMove(Move &m, const bool tracking) {
 
   // Toggle side to move
   this->hash ^= zobristBlackToMove;
+  this->turn = (this->turn == Color::WHITE) ? Color::BLACK : Color::WHITE;
 
   // Check type
   if (m.pieceType < Move::Piece::B_PAWN) {
@@ -857,21 +847,9 @@ void Chess::MakeMove(Move &m, const bool tracking) {
     m.checkType = this->InChecks(Color::WHITE, this->wKing);
   }
 
+  // Update repetition tracker if tracking is enabled
   if (tracking) {
-    std::string currIdx = this->BoardIdx();
-    for (const auto x : this->firstOccurrence) {
-      if (!currIdx.compare(x)) {
-        for (const auto y : this->secondOccurrence) {
-          if (!currIdx.compare(y)) {
-            this->thirdOccurrence = true;
-            return;
-          }
-        }
-        this->secondOccurrence.emplace_back(currIdx);
-        return;
-      }
-    }
-    this->firstOccurrence.emplace_back(currIdx);
+    repTracker.push(this->hash, irreversible);
   }
 }
 
@@ -1028,9 +1006,11 @@ void Chess::UnMakeMove(const Move &m, const BoardState &bs,
   this->hash = bs.hash;
   if (tracking) {
     this->lastPawnOrTake = bs.lastPawnOrTake;
-    this->firstOccurrence = bs.firstOccurrence;
-    this->secondOccurrence = bs.secondOccurrence;
-    this->thirdOccurrence = bs.thirdOccurrence;
+    // Restore tracker's moveCounter and repetitionStart
+    repTracker.moveCounter = bs.moveCounter;
+    repTracker.repetitionStart = bs.repetitionStart;
+    // Pop the undo stack entry
+    repTracker.pop();
   }
 }
 
@@ -1580,8 +1560,7 @@ uint64_t Chess::perft(int depth, Move::Check checkType) {
     return 0;
   if (depth == 0)
     return 1;
-  if (thirdOccurrence)
-    return 0;
+  // Perft does not consider repetitions; we removed the thirdOccurrence check.
 
   uint64_t currHash = this->hash;
   uint64_t nodes = 0ULL;
@@ -1590,8 +1569,8 @@ uint64_t Chess::perft(int depth, Move::Check checkType) {
 
   MoveCategories pMoves = PseudoLegalMoves(checkType);
   BoardState bs(wCastle, wQueenCastle, bCastle, bQueenCastle, enPassantIdx,
-                lastPawnOrTake, fullTurns, firstOccurrence, secondOccurrence,
-                thirdOccurrence, this->hash);
+                lastPawnOrTake, fullTurns, this->hash, repTracker.moveCounter,
+                repTracker.repetitionStart);
 
   for (Move &m : pMoves.doubleChecks) {
     MakeMove(m, false);
@@ -1624,9 +1603,8 @@ void Chess::perftWorker(Chess currGame, std::vector<Move> moves, int depth,
   for (auto &m : moves) {
     BoardState bs(currGame.wCastle, currGame.wQueenCastle, currGame.bCastle,
                   currGame.bQueenCastle, currGame.enPassantIdx,
-                  currGame.lastPawnOrTake, currGame.fullTurns,
-                  currGame.firstOccurrence, currGame.secondOccurrence,
-                  currGame.thirdOccurrence, currGame.hash);
+                  currGame.lastPawnOrTake, currGame.fullTurns, currGame.hash,
+                  repTracker.moveCounter, repTracker.repetitionStart);
     currGame.MakeMove(m, false);
     localNodes += currGame.perft(depth - 1, m.checkType);
     currGame.UnMakeMove(m, bs, false);

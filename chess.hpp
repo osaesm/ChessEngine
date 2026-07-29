@@ -203,6 +203,58 @@ public:
   }
 };
 
+// ------------------------------------------------------------------
+// Repetition tracker – thread‑local, not copied with Chess
+// ------------------------------------------------------------------
+struct RepetitionTracker {
+  // Hash -> (most recent occurrence index, second most recent)
+  std::unordered_map<uint64_t, std::pair<int, int>> occurrences;
+  // Stack of (hash, old_last1, old_last2) for undo
+  std::vector<std::tuple<uint64_t, int, int>> undoStack;
+  int moveCounter = 0;
+  int repetitionStart = 0;
+
+  void push(uint64_t hash, bool irreversible) {
+    ++moveCounter;
+    if (irreversible)
+      repetitionStart = moveCounter;
+    auto &entry = occurrences[hash]; // default (0,0)
+    int old1 = entry.first;
+    int old2 = entry.second;
+    undoStack.emplace_back(hash, old1, old2);
+    entry.second = old1;
+    entry.first = moveCounter;
+  }
+
+  void pop() {
+    auto [hash, old1, old2] = undoStack.back();
+    undoStack.pop_back();
+    auto it = occurrences.find(hash);
+    if (it != occurrences.end()) {
+      it->second = {old1, old2};
+      if (old1 == 0 && old2 == 0)
+        occurrences.erase(it);
+    }
+    // moveCounter and repetitionStart are not restored here;
+    // they are saved/restored via the BoardState.
+  }
+
+  bool isRepetition(uint64_t hash) const {
+    auto it = occurrences.find(hash);
+    if (it == occurrences.end())
+      return false;
+    return it->second.second >= repetitionStart; // second last occurrence is
+                                                 // after last irreversible move
+  }
+
+  void reset() {
+    occurrences.clear();
+    undoStack.clear();
+    moveCounter = 0;
+    repetitionStart = 0;
+  }
+};
+
 struct Move {
   int start, end;
   bool enPassant;
@@ -238,16 +290,14 @@ struct BoardState {
   int enPassantIdx;
   short lastPawnOrTake;
   int fullTurns;
-  std::vector<std::string> firstOccurrence, secondOccurrence;
-  bool thirdOccurrence;
   uint64_t hash;
+  int moveCounter;
+  int repetitionStart;
   BoardState(bool wC, bool wQC, bool bC, bool bQC, int ePI, short lPOT, int fT,
-             std::vector<std::string> &fO, std::vector<std::string> &sO,
-             bool tO, uint64_t h)
+             uint64_t h, int mc, int rs)
       : wCastle(wC), wQueenCastle(wQC), bCastle(bC), bQueenCastle(bQC),
-        enPassantIdx(ePI), lastPawnOrTake(lPOT), fullTurns(fT),
-        firstOccurrence(fO), secondOccurrence(sO), thirdOccurrence(tO),
-        hash(h) {};
+        enPassantIdx(ePI), lastPawnOrTake(lPOT), fullTurns(fT), hash(h),
+        moveCounter(mc), repetitionStart(rs) {};
 };
 
 struct MoveCategories {
@@ -268,9 +318,6 @@ protected:
   int enPassantIdx;
   short lastPawnOrTake;
   int fullTurns;
-  std::vector<std::string> firstOccurrence;
-  std::vector<std::string> secondOccurrence;
-  bool thirdOccurrence;
   uint64_t hash; // Zobrist hash
 
   static uint64_t PAWN_TAKES[64][2];
@@ -281,10 +328,11 @@ protected:
   static Move::Promotion promotions[4];
 
   // Zobrist keys
-  static uint64_t zobristPiece[64][12];   // 12 piece types (0-5 white, 6-11 black)
-  static uint64_t zobristEnPassant[8];    // one per file
-  static uint64_t zobristCastle[4];       // WK, WQ, BK, BQ
-  static uint64_t zobristBlackToMove;     // XOR when black's turn
+  static uint64_t zobristPiece[64]
+                              [12];    // 12 piece types (0-5 white, 6-11 black)
+  static uint64_t zobristEnPassant[8]; // one per file
+  static uint64_t zobristCastle[4];    // WK, WQ, BK, BQ
+  static uint64_t zobristBlackToMove;  // XOR when black's turn
 
   constexpr uint64_t whites() const {
     return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing);
@@ -300,7 +348,7 @@ public:
   static void Initialize();
   const std::string BoardIdx();
   const std::string ConvertToFEN();
-  MoveCategories PseudoLegalMoves(const Move::Check checkStatus); // no tracking
+  MoveCategories PseudoLegalMoves(const Move::Check checkStatus);
   const Move::Check InChecks(const Color kingColor,
                              const uint64_t kingBoard) const;
   void MakeMove(Move &m, const bool tracking);
@@ -310,6 +358,9 @@ public:
                           Move::Check checkType,
                           std::atomic<uint64_t> &totalNodes);
   uint64_t perftRecurse(int depth, Move::Check checkType);
+
+  // For searching: check if current position repeats (tracking must be enabled)
+  bool isRepetition() const;
 
 private:
   Move::Check checkAfterMove(const Move &m) const;
