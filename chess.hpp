@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "thread_pool.hpp"
+
 // ------------------------------------------------------------------
 // Refactored bit operations: macros replaced with constexpr functions
 // ------------------------------------------------------------------
@@ -158,6 +159,56 @@ constexpr int BishopHash(short idx, uint64_t empties, uint64_t opponent) {
 enum class Color { WHITE, BLACK };
 
 // ------------------------------------------------------------------
+// Move representation: packed into a single 32‑bit integer (using bit‑fields)
+// ------------------------------------------------------------------
+namespace Move {
+enum Check { DOUBLE_CHECK, CHECK, NO_CHECK };
+enum Piece {
+  W_PAWN,
+  W_KNIGHT,
+  W_BISHOP,
+  W_ROOK,
+  W_QUEEN,
+  W_KING,
+  B_PAWN,
+  B_KNIGHT,
+  B_BISHOP,
+  B_ROOK,
+  B_QUEEN,
+  B_KING,
+  NONE
+};
+enum Promotion { QUEEN, ROOK, KNIGHT, BISHOP, NA };
+} // namespace Move
+
+union PackedMove {
+  uint32_t raw;
+  struct {
+    uint32_t start : 6;
+    uint32_t end : 6;
+    uint32_t piece : 4; // Move::Piece
+    uint32_t capture : 4;
+    uint32_t promo : 3; // Move::Promotion
+    uint32_t enPassant : 1;
+    uint32_t check : 2; // Move::Check
+  };
+};
+
+static inline PackedMove
+makePackedMove(int start, int end, bool enPassant, Move::Piece piece,
+               Move::Promotion promo, Move::Piece capture, Move::Check check) {
+  PackedMove m;
+  m.start = start;
+  m.end = end;
+  m.piece = static_cast<uint32_t>(piece);
+  m.capture = static_cast<uint32_t>(capture);
+  m.promo = static_cast<uint32_t>(promo);
+  m.enPassant = enPassant ? 1u : 0u;
+  m.check = static_cast<uint32_t>(check);
+  return m;
+}
+
+// ------------------------------------------------------------------
 // Random number generators for Zobrist keys
 // ------------------------------------------------------------------
 inline uint64_t splitmix64(uint64_t &state) {
@@ -180,7 +231,7 @@ inline uint64_t xoshiro256pp(uint64_t s[4]) {
   return result;
 }
 
-// Thread-local cache (no mutex needed – each thread has its own instance)
+// Thread-local Perft cache
 class PerftCache {
 private:
   std::unordered_map<uint64_t, std::map<int, uint64_t>> perftResults;
@@ -207,18 +258,17 @@ public:
 // Repetition tracker – thread‑local, not copied with Chess
 // ------------------------------------------------------------------
 struct RepetitionTracker {
-  // Hash -> (most recent occurrence index, second most recent)
   std::unordered_map<uint64_t, std::pair<int, int>> occurrences;
-  // Stack of (hash, old_last1, old_last2) for undo
   std::vector<std::tuple<uint64_t, int, int>> undoStack;
   int moveCounter = 0;
   int repetitionStart = 0;
 
   void push(uint64_t hash, bool irreversible) {
     ++moveCounter;
-    if (irreversible)
+    if (irreversible) {
       repetitionStart = moveCounter;
-    auto &entry = occurrences[hash]; // default (0,0)
+    }
+    auto &entry = occurrences[hash];
     int old1 = entry.first;
     int old2 = entry.second;
     undoStack.emplace_back(hash, old1, old2);
@@ -232,19 +282,18 @@ struct RepetitionTracker {
     auto it = occurrences.find(hash);
     if (it != occurrences.end()) {
       it->second = {old1, old2};
-      if (old1 == 0 && old2 == 0)
+      if (old1 == 0 && old2 == 0) {
         occurrences.erase(it);
+      }
     }
-    // moveCounter and repetitionStart are not restored here;
-    // they are saved/restored via the BoardState.
   }
 
   bool isRepetition(uint64_t hash) const {
     auto it = occurrences.find(hash);
-    if (it == occurrences.end())
+    if (it == occurrences.end()) {
       return false;
-    return it->second.second >= repetitionStart; // second last occurrence is
-                                                 // after last irreversible move
+    }
+    return it->second.second >= repetitionStart;
   }
 
   void reset() {
@@ -253,36 +302,6 @@ struct RepetitionTracker {
     moveCounter = 0;
     repetitionStart = 0;
   }
-};
-
-struct Move {
-  int start, end;
-  bool enPassant;
-  enum Check {
-    DOUBLE_CHECK,
-    CHECK,
-    NO_CHECK,
-  } checkType;
-  enum Piece {
-    W_PAWN,
-    W_KNIGHT,
-    W_BISHOP,
-    W_ROOK,
-    W_QUEEN,
-    W_KING,
-    B_PAWN,
-    B_KNIGHT,
-    B_BISHOP,
-    B_ROOK,
-    B_QUEEN,
-    B_KING,
-    NONE // for captures
-  } pieceType;
-  Piece captureType;
-  enum Promotion { QUEEN, ROOK, KNIGHT, BISHOP, NA } promotionType;
-  Move(int s, int e, bool eP, Piece pT, Promotion prT)
-      : start(s), end(e), enPassant(eP), checkType(NO_CHECK), pieceType(pT),
-        captureType(NONE), promotionType(prT) {};
 };
 
 struct BoardState {
@@ -297,17 +316,17 @@ struct BoardState {
              uint64_t h, int mc, int rs)
       : wCastle(wC), wQueenCastle(wQC), bCastle(bC), bQueenCastle(bQC),
         enPassantIdx(ePI), lastPawnOrTake(lPOT), fullTurns(fT), hash(h),
-        moveCounter(mc), repetitionStart(rs) {};
+        moveCounter(mc), repetitionStart(rs) {}
 };
 
 struct MoveCategories {
-  std::vector<Move> doubleChecks, checks, captures, etc;
-  size_t numMoves() {
+  std::vector<PackedMove> doubleChecks, checks, captures, etc;
+  size_t numMoves() const {
     return doubleChecks.size() + checks.size() + captures.size() + etc.size();
-  };
+  }
 };
 
-void Add(MoveCategories &mC, Move &m); // forward declaration
+void Add(MoveCategories &mC, PackedMove m); // forward declaration
 
 class Chess {
 protected:
@@ -318,7 +337,7 @@ protected:
   int enPassantIdx;
   short lastPawnOrTake;
   int fullTurns;
-  uint64_t hash; // Zobrist hash
+  uint64_t hash;
 
   static uint64_t PAWN_TAKES[64][2];
   static uint64_t KNIGHT_MOVES[64];
@@ -327,12 +346,10 @@ protected:
   static uint64_t BISHOP_MOVES[64][4096];
   static Move::Promotion promotions[4];
 
-  // Zobrist keys
-  static uint64_t zobristPiece[64]
-                              [12];    // 12 piece types (0-5 white, 6-11 black)
-  static uint64_t zobristEnPassant[8]; // one per file
-  static uint64_t zobristCastle[4];    // WK, WQ, BK, BQ
-  static uint64_t zobristBlackToMove;  // XOR when black's turn
+  static uint64_t zobristPiece[64][12];
+  static uint64_t zobristEnPassant[8];
+  static uint64_t zobristCastle[4];
+  static uint64_t zobristBlackToMove;
 
   constexpr uint64_t whites() const {
     return (wPawns | wKnights | wBishops | wRooks | wQueens | wKing);
@@ -351,19 +368,19 @@ public:
   MoveCategories PseudoLegalMoves(const Move::Check checkStatus);
   const Move::Check InChecks(const Color kingColor,
                              const uint64_t kingBoard) const;
-  void MakeMove(Move &m, const bool tracking);
-  void UnMakeMove(const Move &m, const BoardState &bs, const bool tracking);
+  void MakeMove(PackedMove m, const bool tracking);
+  void UnMakeMove(PackedMove m, const BoardState &bs, const bool tracking);
   uint64_t perft(int depth, Move::Check checkType);
   uint64_t perftRecurse(int depth, Move::Check checkType);
 
-  // For searching: check if current position repeats (tracking must be enabled)
   bool isRepetition() const;
-
-  // Thread pool access (static, initialised on first use)
   static ThreadPool &getThreadPool();
 
 private:
-  Move::Check checkAfterMove(const Move &m) const;
+  // Compute check after a move given its raw components (does not pack)
+  Move::Check computeCheckAfterMove(int start, int end, bool enPassant,
+                                    Move::Piece piece, Move::Promotion promo,
+                                    Move::Piece capture) const;
   static void InitializeZobrist();
 
   template <Color C>
